@@ -46,6 +46,9 @@ ntp.c ntp.h \
 ssdp.c ssdp.h \
 tls.c tls.h \
 quic.c quic.h \
+discovery.c discovery.h \
+slow.c slow.h \
+mpls.c mpls.h \
 gre.c gre.h \
 terminal.h \
 color.h

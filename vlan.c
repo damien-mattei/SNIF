@@ -193,7 +193,7 @@ void DecodeVlan(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
       return;
 
     default:
-      PrintUnknownEtherType(proto);
+      DecodeOtherEtherType(proto, payload, plen, pkthdr);
       return;
     }
 }

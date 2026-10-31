@@ -52,6 +52,12 @@
 
 #include "ethernet.h"
 
+#include "discovery.h" /* LLDP */
+
+#include "slow.h" /* LACP */
+
+#include "mpls.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -125,18 +131,35 @@ static const struct {
 
 
 /*
- * Function: PrintUnknownEtherType(u_int16_t)
+ * Function: DecodeOtherEtherType(u_int16_t, u_int8_t *, u_int32_t, struct pcap_pkthdr *)
  *
- * Purpose: say which protocol a frame carries when snif does not decode it
- *          (shared by Ethernet, VLAN, SNAP and Linux cooked captures)
+ * Purpose: decode the link layer protocols that are not network layers
+ *          (LLDP, LACP, MPLS), or say which protocol a frame carries when
+ *          snif does not decode it (shared by Ethernet, VLAN, SNAP and
+ *          Linux cooked captures)
  *
  * Arguments: type => the ethertype
+ *            pkt, len => the data following the ethertype
+ *            pkthdr => packet header (for IPv6 inside MPLS)
  *
  * Returns: void function
  */
-void PrintUnknownEtherType(u_int16_t type)
+void DecodeOtherEtherType(u_int16_t type, u_int8_t * pkt, u_int32_t len, struct pcap_pkthdr * pkthdr)
 {
   int i;
+
+  switch (type) {
+  case ETHERNET_TYPE_LLDP:
+    DecodeLLDP(pkt, len);
+    return;
+  case ETHERNET_TYPE_SLOW:
+    DecodeSlowProtocols(pkt, len);
+    return;
+  case ETHERNET_TYPE_MPLS_UNICAST:
+  case ETHERNET_TYPE_MPLS_MULTICAST:
+    DecodeMPLS(pkt, len, pkthdr);
+    return;
+  }
 
   for (i = 0; ether_type_name[i].name != NULL; i++) {
     if (ether_type_name[i].type == type) {
@@ -603,7 +626,8 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
 	return; 
 	
       default:
-	PrintUnknownEtherType(ntohs(eptr->ether_type));
+	DecodeOtherEtherType(ntohs(eptr->ether_type), pkt + ETHERNET_HEADER_LEN,
+			     cap_len - ETHERNET_HEADER_LEN, NULL);
 	return;
 
       }

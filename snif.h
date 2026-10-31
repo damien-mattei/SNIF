@@ -72,7 +72,7 @@ void printResolvedIP(char *); /* resolve IP in hostname and print it */
 void printResolvedIP6(struct in6_addr *); /* resolve IPv6 address in hostname and print it */
 void PrintIP6Addr(u_int8_t *, char); /* print an IPv6 address (and its name) */
 char * EtherVendor(u_int8_t *); /* constructor of an ethernet card */
-void PrintUnknownEtherType(u_int16_t); /* name of an ethertype not decoded */
+void DecodeOtherEtherType(u_int16_t, u_int8_t *, u_int32_t, struct pcap_pkthdr *); /* LLDP, LACP, MPLS, or name of an ethertype */
 void PrintLinkAddresses(const char *, u_int8_t *, u_int8_t *, int); /* addresses and vendors of a link layer */
 void printReverseDNSerror(int); /* print possible Reverse DNS error */
 int CountLinesInFile(char *); /* count lines in file */

@@ -118,7 +118,8 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
 	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
-	quic.$(OBJEXT) gre.$(OBJEXT)
+	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
+	mpls.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -137,20 +138,21 @@ DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
-	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po \
-	./$(DEPDIR)/enc.Po ./$(DEPDIR)/ethernet.Po \
-	./$(DEPDIR)/ethlb.Po ./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
+	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/discovery.Po \
+	./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po ./$(DEPDIR)/enc.Po \
+	./$(DEPDIR)/ethernet.Po ./$(DEPDIR)/ethlb.Po \
+	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
-	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po ./$(DEPDIR)/ntp.Po \
-	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
-	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
+	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po ./$(DEPDIR)/mpls.Po \
+	./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
+	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
 	./$(DEPDIR)/raw.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
-	./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po \
-	./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tls.Po \
-	./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
+	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
+	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
+	./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
 	./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -378,6 +380,9 @@ ntp.c ntp.h \
 ssdp.c ssdp.h \
 tls.c tls.h \
 quic.c quic.h \
+discovery.c discovery.h \
+slow.c slow.h \
+mpls.c mpls.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -503,6 +508,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chdlc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcp.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/discovery.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/enc.Po@am__quote@ # am--include-marker
@@ -520,6 +526,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/llc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loopback.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oldpflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pflog.Po@am__quote@ # am--include-marker
@@ -530,6 +537,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/raw.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sll.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slow.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snap.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snif.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssdp.Po@am__quote@ # am--include-marker
@@ -858,6 +866,7 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
 	-rm -f ./$(DEPDIR)/dhcp.Po
+	-rm -f ./$(DEPDIR)/discovery.Po
 	-rm -f ./$(DEPDIR)/dns.Po
 	-rm -f ./$(DEPDIR)/eap.Po
 	-rm -f ./$(DEPDIR)/enc.Po
@@ -875,6 +884,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/mpls.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
@@ -885,6 +895,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po
+	-rm -f ./$(DEPDIR)/slow.Po
 	-rm -f ./$(DEPDIR)/snap.Po
 	-rm -f ./$(DEPDIR)/snif.Po
 	-rm -f ./$(DEPDIR)/ssdp.Po
@@ -945,6 +956,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
 	-rm -f ./$(DEPDIR)/dhcp.Po
+	-rm -f ./$(DEPDIR)/discovery.Po
 	-rm -f ./$(DEPDIR)/dns.Po
 	-rm -f ./$(DEPDIR)/eap.Po
 	-rm -f ./$(DEPDIR)/enc.Po
@@ -962,6 +974,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/mpls.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
@@ -972,6 +985,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po
+	-rm -f ./$(DEPDIR)/slow.Po
 	-rm -f ./$(DEPDIR)/snap.Po
 	-rm -f ./$(DEPDIR)/snif.Po
 	-rm -f ./$(DEPDIR)/ssdp.Po
