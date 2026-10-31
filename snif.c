@@ -133,7 +133,7 @@
  * only the name is printed, followed by the description in verbose mode
  */
 
-static void PrintPort(u_int16_t port,char color) {
+static void PrintPort(u_int16_t port,int color) {
 
   if (send_esc) {
     SETATTRIB( BRIGHT );
@@ -199,7 +199,7 @@ static void PrintPort(u_int16_t port,char color) {
  * print source and destination ports
  */
 
-void PrintPorts(u_int16_t sp,u_int16_t dp,char color) {
+void PrintPorts(u_int16_t sp,u_int16_t dp,int color) {
 
   PrintPort(sp,color);
 
@@ -871,6 +871,29 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
 
 /*
+ * Function: Terminal256Colors(void)
+ *
+ * Purpose: find in the environment if the terminal knows the palette of
+ *          256 colors: TERM names it (xterm-256color, screen-256color...)
+ *          or COLORTERM is set by the terminal (VTE terminals as
+ *          xfce4-terminal or gnome-terminal, konsole...)
+ *
+ * Returns: 1 if it does
+ */
+static int Terminal256Colors(void)
+{
+  const char * term = getenv("TERM");
+  const char * colorterm = getenv("COLORTERM");
+
+  if ((term != NULL) && ((strstr(term, "256color") != NULL) || (strstr(term, "direct") != NULL))) {
+    return 1;
+  }
+
+  return (colorterm != NULL) && (colorterm[0] != '\0');
+}
+
+
+/*
  * Function: ParseCmdLine(int, char *)
  *
  * Purpose:  Parse command line args
@@ -883,9 +906,10 @@ void ParseCmdLine(int argc, char *argv[])
 {
 
   int ch;                         /* storage var for getopt info */
+  int only_8_colors = 0;          /* -8 */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargKx")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargKx8")) != EOF)
     {
       switch(ch) {
 
@@ -911,6 +935,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -r : resolve IP address in hostname\n");
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
 	printf(" -x : dump the packets in hexadecimal and ASCII\n");
+	printf(" -8 : use only the 8 basic colors, even if the terminal knows 256 colors\n");
 	printf("\n filter expression : only the packets matching it are shown, in the\n");
 	printf(" syntax of tcpdump (see man pcap-filter), ex: snif -i eth0 port 53\n");
 	CleanExit(0);
@@ -1005,8 +1030,17 @@ void ParseCmdLine(int argc, char *argv[])
 	dump_hex = 1;
 	break;
 
+      case '8':
+	only_8_colors = 1;
+	break;
+
       }
     }
+
+  /* the terminals with 256 colors say it in the environment */
+  if (!only_8_colors) {
+    colors256 = Terminal256Colors();
+  }
 
   /* the remaining arguments make the capture filter, as for tcpdump */
   if (optind < argc) {

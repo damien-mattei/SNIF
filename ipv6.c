@@ -75,7 +75,7 @@ extern int resolv_ip; /* resolve or not IP address in hostname */
  *
  * Returns: void function
  */
-void PrintIP6Addr(u_int8_t * addr, char color)
+void PrintIP6Addr(u_int8_t * addr, int color)
 {
 
   struct in6_addr a; /* aligned copy of the address */

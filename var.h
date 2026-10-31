@@ -103,6 +103,9 @@ int my_mac_known = 0;
 
 int dump_hex = 0; /* dump the packets in hexadecimal and ASCII (-x) */
 
+int colors256 = 0; /* the terminal knows the 256 colors palette,
+		    * found in the environment unless -8 */
+
 char * capture_filter = NULL; /* capture filter (tcpdump syntax) made of
 			       * the arguments following the options */
 

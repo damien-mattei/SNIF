@@ -39,15 +39,27 @@
 #define CYAN		6
 #define	WHITE		7
 
+/* a color of the 256 colors palette (xterm, VTE, konsole...), with the
+ * color of the 8 colors palette used when the terminal lacks it */
+#define COLOR256( n , fallback ) (0x10000 | ((n) << 8) | (fallback))
+#define IS_COLOR256( c ) ((c) & 0x10000)
+
+extern int colors256; /* the terminal knows the 256 colors palette */
+
+/* escape sequence of the foreground color c: 38;5;n in the palette
+ * of 256 colors, 30 + color in the palette of 8 colors */
+#define COLORSEQ( c ) ((IS_COLOR256( c ) && colors256) ? "38;5;" : ""), \
+  ((IS_COLOR256( c ) && colors256) ? (((c) >> 8) & 0xff) : (((c) & 0xff) + 30))
+
 /* come back in normal mode - reset attributes and color */
 #define NORMALMODE()  printf("%c[0m", 0x1B)
 
 /* set attribute and color */
-#define SETATTCOL( a , c ) printf("%c[%d;%dm", 0x1B, a, c + 30 )
+#define SETATTCOL( a , c ) printf("%c[%d;%s%dm", 0x1B, a, COLORSEQ( c ) )
 
 #define SETATTRIB( a ) printf("%c[%dm", 0x1B, a )
 
-#define SETCOLOR( c ) printf("%c[%dm", 0x1B,  c + 30 )
+#define SETCOLOR( c ) printf("%c[%s%dm", 0x1B, COLORSEQ( c ) )
 
 
 /* Changes terminal color n ('0' through 'f') to the color

@@ -67,10 +67,10 @@ void DecodeGRE(u_int8_t *, u_int32_t,IPHdr *);/*  Decode Generic Routing Encapsu
 int get_device_info(void); /* Get the interface device list */
 void GetDeviceMAC(char * device); /* hardware address of the capture interface */
 void DumpHex(u_char *, u_int32_t); /* dump a packet in hexadecimal and ASCII */
-void PrintPorts(u_int16_t,u_int16_t,char); /* print source and destination ports */
+void PrintPorts(u_int16_t,u_int16_t,int); /* print source and destination ports */
 void printResolvedIP(char *); /* resolve IP in hostname and print it */
 void printResolvedIP6(struct in6_addr *); /* resolve IPv6 address in hostname and print it */
-void PrintIP6Addr(u_int8_t *, char); /* print an IPv6 address (and its name) */
+void PrintIP6Addr(u_int8_t *, int); /* print an IPv6 address (and its name) */
 char * EtherVendor(u_int8_t *); /* constructor of an ethernet card */
 void DecodeOtherEtherType(u_int16_t, u_int8_t *, u_int32_t, struct pcap_pkthdr *); /* LLDP, LACP, MPLS, or name of an ethertype */
 void PrintLinkAddresses(const char *, u_int8_t *, u_int8_t *, int); /* addresses and vendors of a link layer */

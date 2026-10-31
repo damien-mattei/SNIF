@@ -14,6 +14,12 @@ common options:
 
 -x : dump the packets in hexadecimal and ASCII
 
+-8 : use only the 8 basic colors. By default, when the terminal says it
+     knows the palette of 256 colors (TERM=xterm-256color, or COLORTERM
+     set, as in xfce4-terminal, gnome-terminal, konsole), the tunnels are
+     shown in orange and the routing protocols in light purple, otherwise
+     in yellow as the applications.
+
 -K : don't verify TCP and UDP checksums. Without -K, the checksums of the
      packets sent by us are not verified anyway: the network card computes
      them after the capture (checksum offloading). They are recognized by
