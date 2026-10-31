@@ -22,6 +22,29 @@ common options:
 
 snif -h gives the list of all the options.
 
+decoded protocols (the layers are shown in different colors):
+
+link layer   : Ethernet (vendor of the cards), 802.3/LLC/SNAP, VLAN 802.1Q
+               and QinQ, PPPoE, PPP, Linux cooked captures (SLL, SLL2),
+               Wi-Fi 802.11 and radiotap, EAPOL/EAP, Token Ring, FDDI,
+               Spanning Tree (STP, RSTP, MSTP, PVST+), LLDP, CDP, LACP and
+               the slow protocols, MPLS, ARP/RARP
+network      : IPv4 (options), IPv6 (extension headers), ICMP, ICMPv6
+               (neighbor discovery, MLD), IGMP, IPX (RIP, SAP), AH, ESP,
+               GRE, ERSPAN, IP-in-IP, 6in4
+transport    : TCP (options), UDP, SCTP
+routing      : OSPF v2/v3, BGP, RIP, RIPng, EIGRP, PIM, VRRP, HSRP, BFD
+tunnels, VPN : VXLAN, Geneve, L2TP, Teredo, GTP-U, IKE v1/v2, ESP in UDP,
+               WireGuard, OpenVPN
+applications : DNS, mDNS, LLMNR, DHCP, DHCPv6, NTP, SSDP, TLS (server name,
+               versions, key exchange, certificate), QUIC, HTTP, SIP, RTSP,
+               SMTP, FTP, POP3, IMAP, SSH, Telnet, SNMP, syslog, TFTP,
+               NetBIOS, SMB, LDAP, Kerberos, RADIUS, STUN/TURN, MQTT, CoAP,
+               ONC RPC/NFS, RDP, VNC, Modbus/TCP, WS-Discovery
+
+snif does not reassemble the TCP streams: a message cut over several
+segments is decoded only in its first segment.
+
 the arguments following the options make a capture filter, in the syntax
 of tcpdump (man pcap-filter), ex:
 
