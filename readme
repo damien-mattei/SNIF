@@ -42,6 +42,7 @@ partially supported on those systems:
 
 -Mac OS X.2 (Jaguar) : works with -a option due to lack of hash table support in this version of Mac os X.
 -Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
+-Linux Ubuntu 24.04
 
 
 REQUIREMENTS:

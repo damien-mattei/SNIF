@@ -72,6 +72,8 @@
 
 #include "misc.h"
 
+#include "flow.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -283,6 +285,10 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if (dp == WSD_PORT) {
       DecodeWSD(data, dsize);
+    }
+    else if (((sp == NETFLOW_PORT) || (dp == NETFLOW_PORT) || (dp == NETFLOW_PORT_ALT1) || (dp == NETFLOW_PORT_ALT2)
+	      || (sp == IPFIX_PORT) || (dp == IPFIX_PORT)) && IsNetFlow(data, dsize)) {
+      DecodeNetFlow(data, dsize);
     }
     else if (((sp == TUYA_PORT) || (dp == TUYA_PORT) || (sp == TUYA_PORT_31) || (dp == TUYA_PORT_31)
 	      || (sp == TUYA_PORT_35) || (dp == TUYA_PORT_35)) && IsTuya(data, dsize)) {

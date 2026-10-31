@@ -111,19 +111,19 @@ PROGRAMS = $(sbin_PROGRAMS)
 am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
-	isis.$(OBJEXT) pppserial.$(OBJEXT) slip.$(OBJEXT) \
-	wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
-	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
-	loopback.$(OBJEXT) raw.$(OBJEXT) i4lrawip.$(OBJEXT) \
-	i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) arp.$(OBJEXT) ip.$(OBJEXT) \
-	ipv6.$(OBJEXT) ipx.$(OBJEXT) ethlb.$(OBJEXT) icmp.$(OBJEXT) \
-	icmp6.$(OBJEXT) igmp.$(OBJEXT) stp.$(OBJEXT) tcp.$(OBJEXT) \
-	udp.$(OBJEXT) dns.$(OBJEXT) dhcp.$(OBJEXT) ntp.$(OBJEXT) \
-	ssdp.$(OBJEXT) tls.$(OBJEXT) quic.$(OBJEXT) \
-	discovery.$(OBJEXT) slow.$(OBJEXT) mpls.$(OBJEXT) \
-	homeplug.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
-	tunnel.$(OBJEXT) vpn.$(OBJEXT) text.$(OBJEXT) \
-	services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
+	isis.$(OBJEXT) flow.$(OBJEXT) pppserial.$(OBJEXT) \
+	slip.$(OBJEXT) wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) \
+	pflog.$(OBJEXT) oldpflog.$(OBJEXT) eap.$(OBJEXT) \
+	pppoe.$(OBJEXT) loopback.$(OBJEXT) raw.$(OBJEXT) \
+	i4lrawip.$(OBJEXT) i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) \
+	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
+	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
+	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
+	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
+	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
+	mpls.$(OBJEXT) homeplug.$(OBJEXT) iproto.$(OBJEXT) \
+	routing.$(OBJEXT) tunnel.$(OBJEXT) vpn.$(OBJEXT) \
+	text.$(OBJEXT) services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -145,16 +145,17 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/discovery.Po \
 	./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po ./$(DEPDIR)/enc.Po \
 	./$(DEPDIR)/ethernet.Po ./$(DEPDIR)/ethlb.Po \
-	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po ./$(DEPDIR)/homeplug.Po \
-	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
-	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
-	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
-	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/isis.Po ./$(DEPDIR)/llc.Po \
-	./$(DEPDIR)/loopback.Po ./$(DEPDIR)/misc.Po \
-	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
-	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
-	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
-	./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
+	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/flow.Po ./$(DEPDIR)/gre.Po \
+	./$(DEPDIR)/homeplug.Po ./$(DEPDIR)/i4lciscoip.Po \
+	./$(DEPDIR)/i4lrawip.Po ./$(DEPDIR)/icmp.Po \
+	./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po ./$(DEPDIR)/ip.Po \
+	./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
+	./$(DEPDIR)/isis.Po ./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
+	./$(DEPDIR)/misc.Po ./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po \
+	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
+	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po ./$(DEPDIR)/pppoe.Po \
+	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
+	./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
 	./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
 	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
 	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
@@ -363,6 +364,7 @@ enc.c enc.h \
 ppp.c ppp.h \
 pppctl.c pppctl.h \
 isis.c isis.h \
+flow.c flow.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -542,6 +544,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ethernet.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ethlb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fddi.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/flow.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gre.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/homeplug.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/i4lciscoip.Po@am__quote@ # am--include-marker
@@ -953,6 +956,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ethernet.Po
 	-rm -f ./$(DEPDIR)/ethlb.Po
 	-rm -f ./$(DEPDIR)/fddi.Po
+	-rm -f ./$(DEPDIR)/flow.Po
 	-rm -f ./$(DEPDIR)/gre.Po
 	-rm -f ./$(DEPDIR)/homeplug.Po
 	-rm -f ./$(DEPDIR)/i4lciscoip.Po
@@ -1053,6 +1057,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ethernet.Po
 	-rm -f ./$(DEPDIR)/ethlb.Po
 	-rm -f ./$(DEPDIR)/fddi.Po
+	-rm -f ./$(DEPDIR)/flow.Po
 	-rm -f ./$(DEPDIR)/gre.Po
 	-rm -f ./$(DEPDIR)/homeplug.Po
 	-rm -f ./$(DEPDIR)/i4lciscoip.Po
