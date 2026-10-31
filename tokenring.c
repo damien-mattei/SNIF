@@ -51,15 +51,94 @@ extern int send_esc; /* send escape sequence to terminal
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
 
 
 
+
+
+
+/* commands of the MAC frames (IEEE 802.5 major vectors) */
+static const struct {
+  u_int8_t command;
+  const char * name;
+} tr_mac_command[] = {
+  { 0x00, "Response" }, { 0x02, "Beacon" }, { 0x03, "Claim Token" },
+  { 0x04, "Ring Purge" }, { 0x05, "Active Monitor Present" },
+  { 0x06, "Standby Monitor Present" }, { 0x07, "Duplicate Address Test" },
+  { 0x08, "Lobe Media Test" }, { 0x09, "Transmit Forward" },
+  { 0x0b, "Remove Ring Station" }, { 0x0c, "Change Parameters" },
+  { 0x0d, "Initialize Ring Station" }, { 0x0e, "Request Ring Station Address" },
+  { 0x0f, "Request Ring Station State" }, { 0x10, "Request Ring Station Attachments" },
+  { 0x20, "Request Initialization" }, { 0x22, "Report Ring Station Address" },
+  { 0x23, "Report Ring Station State" }, { 0x24, "Report Ring Station Attachments" },
+  { 0x25, "Report New Active Monitor" }, { 0x26, "Report NAUN Change" },
+  { 0x27, "Report Neighbor Notification Incomplete" }, { 0x28, "Report Active Monitor Error" },
+  { 0x29, "Report Soft Error" }, { 0x2a, "Report Transmit Forward" },
+  { 0, NULL }
+};
+
+
+/*
+ * Function: PrintRoutingInfo(u_int8_t *, u_int32_t)
+ *
+ * Purpose: print the Routing Information Field of a source routed frame
+ *          (RFC 1042, IEEE 802.5 annex C): kind of route, then the rings
+ *          and bridges crossed
+ *
+ * Arguments: rif => the field, its length was checked
+ *            rif_len => its length (control field included)
+ *
+ * Returns: void function
+ */
+static void PrintRoutingInfo(u_int8_t * rif, u_int32_t rif_len)
+{
+  u_int16_t rc = (rif[0] << 8) | rif[1];
+  u_int16_t rd;
+  u_int32_t i;
+
+  switch (RIF_BROADCAST(rc)) {
+  case 4:
+  case 5:
+    printf("Source route: all-routes explorer");
+    break;
+  case 6:
+  case 7:
+    printf("Source route: single-route explorer");
+    break;
+  default:
+    printf("Source route:");
+    break;
+  }
+
+  /* each route designator: ring number on 12 bits, bridge number on 4 */
+  for (i = TR_RC_LEN; i + 2 <= rif_len; i += 2) {
+    rd = (rif[i] << 8) | rif[i + 1];
+    printf("%s ring 0x%03x", (i == TR_RC_LEN) ? "" : ",", rd >> 4);
+    if ((rd & 0x0f) && (i + 2 < rif_len)) {
+      printf(", bridge %u", rd & 0x0f);
+    }
+  }
+
+  if (verb > 0) { /* largest frame: 516 to 17800 bytes, 7 for an explorer */
+    static const char * largest[] = { "516", "1500", "2052", "4472", "8144", "11407", "17800", "any" };
+    printf("  (direction %s, largest frame %s bytes)", RIF_DIRECTION(rc) ? "backward" : "forward", largest[RIF_LF(rc)]);
+  }
+
+  printf("\n");
+}
 
 
 /*
  * Function: DecodeTokenRingPkt(struct pcap_pkthdr*, u_int8_t*)
  *
- * Purpose: Decode Token Ring packets!
+ * Purpose: Decode Token Ring frames (IEEE 802.5): addresses, source route,
+ *          and the MAC frames managing the ring; the LLC frames carry
+ *          the network protocols
  *
  * Arguments:
  *            pkthdr => ptr to the packet header
@@ -69,116 +148,87 @@ extern int dump_link_layer; /* dump network link layer info (ethernet address ,.
  */
 void DecodeTokenRingPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 {
-    u_int32_t cap_len;      /* caplen value */
+    u_int32_t cap_len = pkthdr->caplen;
+    u_int32_t hlen = TR_MAC_HDR_LEN;  /* header, and routing information */
+    u_int32_t rif_len = 0;
+    TokenRingHdr * trptr;
+    u_int8_t saddr[TR_ALEN];
+    u_int8_t command;
+    int i;
 
-    TokenRingHdr * trptr; /* Token Ring Header structure pointer */ 
-
-    TRhdrRoutingControlField * rcfptr; /* Routing Control Field pointer */
-
-    /* set the lengths we need */
-    cap_len = pkthdr->caplen;   /* captured packet length */
-
-    if (dump_link_layer) { 
-
-      printf("TOKEN RING ");
-
+    if (cap_len < TR_MAC_HDR_LEN) {
+      printf("TOKEN RING\n");
+      printf("Captured data length < Token Ring header length! (%u < %d bytes)\n", cap_len, TR_MAC_HDR_LEN);
+      return;
     }
 
-    if(cap_len < sizeof(TokenRingHdr))
-      {
-        printf("Captured data length < Token Ring header length!\n(%d < %d bytes)\n", cap_len, TR_HLEN);
+    trptr = (TokenRingHdr *) pkt;
+
+    /* the routing information indicator is not part of the address (RFC 1042) */
+    for (i = 0; i < TR_ALEN; i++) {
+      saddr[i] = trptr->saddr[i];
+    }
+    saddr[0] &= ~TR_RII;
+
+    if (dump_link_layer) {
+      PrintLinkAddresses("TOKEN RING", saddr, trptr->daddr, 1);
+    }
+
+    if (verb > 0) {
+      printf("Access control: priority %u, token %u, monitor %u, reservation %u   Frame control: 0x%02x\n",
+	     trptr->ac >> 5, (trptr->ac >> 4) & 1, (trptr->ac >> 3) & 1, trptr->ac & 7, trptr->fc);
+    }
+
+    if (trptr->saddr[0] & TR_RII) { /* source routed: a Routing Information Field follows */
+
+      if (cap_len < TR_MAC_HDR_LEN + TR_RC_LEN) {
+	printf("Routing information truncated\n");
 	return;
       }
 
-    /* lay the tokenring header structure over the packet data */
-    trptr = (TokenRingHdr *) pkt;
+      rif_len = RIF_LEN((pkt[TR_MAC_HDR_LEN] << 8) | pkt[TR_MAC_HDR_LEN + 1]);
 
-
-    /* printing TOKEN RING source & destination address */
-   
-    if (dump_link_layer) { 
-
-      if (send_esc) {
-	
-	SETATTRIB( BRIGHT );
-	
-	printf( "%X:%X:%X:%X:%X:%X", trptr->saddr[0],
-		trptr->saddr[1], trptr->saddr[2], trptr->saddr[3],
-		trptr->saddr[4], trptr->saddr[5]);
-	
-	NORMALMODE();
-	SETCOLOR( DATA_LINK_LAYER_COLOR );
-	printf(" > ");
-	SETATTRIB( BRIGHT );
-	
-	printf( "%X:%X:%X:%X:%X:%X\n", trptr->daddr[0],
-		trptr->daddr[1], trptr->daddr[2], trptr->daddr[3],
-		trptr->daddr[4], trptr->daddr[5]);
-	
-	NORMALMODE();
-	SETCOLOR( DATA_LINK_LAYER_COLOR);
-
-      }
-      else {
-	
-	printf( "%X:%X:%X:%X:%X:%X", trptr->saddr[0],
-		trptr->saddr[1], trptr->saddr[2], trptr->saddr[3],
-		trptr->saddr[4], trptr->saddr[5]);
-	
-	printf(" > ");
-	
-	printf( "%X:%X:%X:%X:%X:%X\n", trptr->daddr[0],
-		trptr->daddr[1], trptr->daddr[2], trptr->daddr[3],
-		trptr->daddr[4], trptr->daddr[5]);
-	
+      /* even values from 2 to 30, the control field included */
+      if ((rif_len < TR_RC_LEN) || (rif_len & 1) || (cap_len < TR_MAC_HDR_LEN + rif_len)) {
+	printf("Bad routing information length %u\n", rif_len);
+	return;
       }
 
+      PrintRoutingInfo(pkt + TR_MAC_HDR_LEN, rif_len);
+      hlen += rif_len;
     }
-    
-    /*
-     * according to rfc 1042:
-     *
-     *   The current standard for token ring's, IEEE 802.5-1985, specifies
-     *   the operation of single ring networks.  However, most
-     *   implementations of 802.5 have added extensions for multi-ring
-     *   networks using source-routing of packets at the MAC layer.
-     *   ...
-     *   The presence of a Routing Information Field is indicated by the Most
-     *   Significant Bit (MSB) of the source address, called the Routing
-     *   Information Indicator (RII).  If the RII equals zero, a RIF is
-     *   not present.  If the RII equals 1, the RIF is present.
-     *   ...
-     *   Implementations should be careful to reset the
-     *   RII to zero before passing source addresses to other protocol
-     *   layers which may be confused by their presence.
-     *
-     * end of RFC text
-     *   
-     */
 
-    if (trptr->saddr[0] & 0x80) { /* MSB of source adress is set to 1
-				   * indicating a Route Information Field */
-      
-       if(cap_len < (sizeof(TokenRingHdr) + sizeof(TRhdrRoutingControlField)))
-      {
-        
-            printf("Captured data length < Token Ring header length (with Routing Control Field) !\n(%d < %d bytes)\n", cap_len,
-                       (int)  (sizeof(TokenRingHdr) + sizeof(TRhdrRoutingControlField)));
-        
-	    return;
+    switch (TR_FC_TYPE(trptr->fc)) {
+
+    case TR_FC_MAC: /* major vector: length, classes, command */
+      printf("Token Ring MAC frame");
+      if (cap_len >= hlen + 4) {
+	command = pkt[hlen + 3];
+	for (i = 0; tr_mac_command[i].name != NULL; i++) {
+	  if (tr_mac_command[i].command == command) {
+	    break;
+	  }
+	}
+	if (tr_mac_command[i].name != NULL) {
+	  printf(": %s", tr_mac_command[i].name);
+	}
+	else {
+	  printf(": command 0x%02x", command);
+	}
+	if (verb > 0) {
+	  printf("  (vector length %u, destination class %u, source class %u)",
+		 (pkt[hlen] << 8) | pkt[hlen + 1], pkt[hlen + 2] >> 4, pkt[hlen + 2] & 0x0f);
+	}
       }
+      printf("\n");
+      return;
 
-      rcfptr = (TRhdrRoutingControlField *) (pkt + sizeof(TokenRingHdr));
-      DecodeLLC(pkt + sizeof(TokenRingHdr) + sizeof(TRhdrRoutingControlField) + RIF_LENGTH(rcfptr)
-		, cap_len - sizeof(TokenRingHdr) - sizeof(TRhdrRoutingControlField) - RIF_LENGTH(rcfptr),pkthdr);
+    case TR_FC_LLC:
+      DecodeLLC(pkt + hlen, cap_len - hlen, pkthdr);
+      return;
 
+    default:
+      printf("Token Ring frame of reserved type %u\n", TR_FC_TYPE(trptr->fc));
+      return;
     }
-    else {  /* MSB of source adress is set to 0
-	     * no Route Information Field */
-
-      DecodeLLC(pkt + sizeof(TokenRingHdr), cap_len - sizeof(TokenRingHdr),pkthdr);
-
-    }
-
-    return;
 }

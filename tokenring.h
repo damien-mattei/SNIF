@@ -42,6 +42,21 @@
  */
 #define RIF_LENGTH(rcfptr)		((ntohs((rcfptr)->rcf) & 0x1f00) >> 8)
 
+/* the same, on the routing control field in host order */
+#define RIF_BROADCAST(rc)   (((rc) >> 13) & 0x07)   /* 0xx routed, 10x all-routes, 11x single-route */
+#define RIF_LEN(rc)         (((rc) >> 8) & 0x1f)
+#define RIF_DIRECTION(rc)   (((rc) >> 7) & 0x01)
+#define RIF_LF(rc)          (((rc) >> 4) & 0x07)    /* largest frame */
+
+#define TR_MAC_HDR_LEN      14      /* access control, frame control, addresses */
+#define TR_RC_LEN           2       /* routing control field */
+#define TR_RII              0x80    /* routing information indicator, in the source address */
+
+/* frame type, the 2 high bits of the frame control field */
+#define TR_FC_TYPE(fc)      (((fc) >> 6) & 0x03)
+#define TR_FC_MAC           0       /* ring management */
+#define TR_FC_LLC           1       /* data */
+
 /* Token Ring */
 
 typedef struct _TokenRingHdr

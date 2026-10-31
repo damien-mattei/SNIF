@@ -59,6 +59,12 @@ extern int send_esc; /* send escape sequence to terminal
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
+
 
 
 
@@ -68,7 +74,9 @@ extern int dump_link_layer; /* dump network link layer info (ethernet address ,.
 /*
  * Function: DecodeFDDIPkt(struct pcap_pkthdr*, u_int8_t*)
  *
- * Purpose: Decode FDDI (Fiber Distributed Data Interface) Packet
+ * Purpose: Decode FDDI (Fiber Distributed Data Interface) frames: the
+ *          frame control field tells the kind of frame, only the LLC
+ *          frames carry the network protocols
  *
  * Arguments: 
  *            pkthdr => ptr to the packet header
@@ -78,79 +86,76 @@ extern int dump_link_layer; /* dump network link layer info (ethernet address ,.
  */
 void DecodeFDDIPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 {
-    u_int32_t pkt_len;      /* length of the packet */
-    u_int32_t cap_len;      /* capture length variable */
-  
-    u_int32_t dataoff = sizeof(FDDIHdr);
-
+    u_int32_t cap_len = pkthdr->caplen;
     FDDIHdr * fddi_hdr_ptr;
+    u_int8_t fc;
 
-    pkt_len = pkthdr->len;
-    cap_len = pkthdr->caplen;
-
-    if (dump_link_layer) { 
-
-      printf("FDDI ");
-
-    }
-
-    if(BUFSIZ < pkt_len)
-    {
-        pkt_len = cap_len;
-    }
-
- 
-    if(pkthdr->caplen < dataoff)
-    {
-      printf("Captured data length < FDDI header length! (%d < %d bytes)\n", pkthdr->caplen, dataoff);
+    if (cap_len < 1) {
+      printf("FDDI empty frame\n");
       return;
     }
 
-    /* let's put this in as the fddi header structure */
-    fddi_hdr_ptr = (FDDIHdr *) pkt;
+    fc = pkt[0];
 
-    /* printing FDDI source & destination address */
-   
-    if (dump_link_layer) { 
-
-      if (send_esc) {
-
-	SETATTRIB( BRIGHT );
-
-	printf( "%X:%X:%X:%X:%X:%X", fddi_hdr_ptr->saddr[0],
-		fddi_hdr_ptr->saddr[1], fddi_hdr_ptr->saddr[2], fddi_hdr_ptr->saddr[3],
-		fddi_hdr_ptr->saddr[4], fddi_hdr_ptr->saddr[5]);
-
-	NORMALMODE();
-	SETCOLOR( DATA_LINK_LAYER_COLOR );
-	printf(" > ");
-	SETATTRIB( BRIGHT );
-
-	printf( "%X:%X:%X:%X:%X:%X\n", fddi_hdr_ptr->daddr[0],
-		fddi_hdr_ptr->daddr[1], fddi_hdr_ptr->daddr[2], fddi_hdr_ptr->daddr[3],
-		fddi_hdr_ptr->daddr[4], fddi_hdr_ptr->daddr[5]);
-    
-	NORMALMODE();
-	SETCOLOR( DATA_LINK_LAYER_COLOR);
-
-      }
-      else {
-
-	printf( "%X:%X:%X:%X:%X:%X", fddi_hdr_ptr->saddr[0],
-		fddi_hdr_ptr->saddr[1], fddi_hdr_ptr->saddr[2], fddi_hdr_ptr->saddr[3],
-		fddi_hdr_ptr->saddr[4], fddi_hdr_ptr->saddr[5]);
-
-	printf(" > ");
-
-	printf( "%X:%X:%X:%X:%X:%X\n", fddi_hdr_ptr->daddr[0],
-		fddi_hdr_ptr->daddr[1], fddi_hdr_ptr->daddr[2], fddi_hdr_ptr->daddr[3],
-		fddi_hdr_ptr->daddr[4], fddi_hdr_ptr->daddr[5]);
-    
-      }
-
+    if ((fc == FDDI_FC_TOKEN) || (fc == FDDI_FC_RESTRICTED_TOKEN)) { /* no address */
+      printf("FDDI %stoken\n", (fc == FDDI_FC_RESTRICTED_TOKEN) ? "restricted " : "");
+      return;
     }
 
-    DecodeLLC(pkt + sizeof(FDDIHdr), cap_len - sizeof(FDDIHdr),pkthdr);
-   
-    return;
+    if (cap_len < sizeof(FDDIHdr)) {
+      printf("FDDI\n");
+      printf("Captured data length < FDDI header length! (%u < %d bytes)\n", cap_len, (int) sizeof(FDDIHdr));
+      return;
+    }
+
+    fddi_hdr_ptr = (FDDIHdr *) pkt;
+
+    if (dump_link_layer) {
+      PrintLinkAddresses("FDDI", fddi_hdr_ptr->saddr, fddi_hdr_ptr->daddr, 0);
+    }
+
+    if (verb > 0) {
+      printf("Frame control: 0x%02x (%s)\n", fc, (fc & FDDI_FC_SYNC) ? "synchronous" : "asynchronous");
+    }
+
+    switch (FDDI_FC_FORMAT(fc)) {
+
+    case FDDI_FC_FORMAT_LLC:
+      if (verb > 0) {
+	printf("FDDI LLC frame, priority %u\n", fc & 0x07);
+      }
+      DecodeLLC(pkt + sizeof(FDDIHdr), cap_len - sizeof(FDDIHdr), pkthdr);
+      return;
+
+    case FDDI_FC_FORMAT_SMT_MAC:
+      switch (fc & 0x8f) { /* without the address length bit */
+      case 0x00:
+	printf("FDDI void frame\n");
+	break;
+      case 0x01:
+	printf("FDDI SMT frame (station management), %u bytes\n", cap_len - (u_int32_t) sizeof(FDDIHdr));
+	break;
+      case 0x0f:
+	printf("FDDI SMT next station addressing frame\n");
+	break;
+      case 0x82:
+	printf("FDDI MAC beacon frame\n");
+	break;
+      case 0x83:
+	printf("FDDI MAC claim frame\n");
+	break;
+      default:
+	printf("FDDI %s frame 0x%02x\n", (fc & FDDI_FC_SYNC) ? "MAC" : "SMT", fc);
+	break;
+      }
+      return;
+
+    case FDDI_FC_FORMAT_IMPLEMENTER:
+      printf("FDDI implementer frame 0x%02x\n", fc);
+      return;
+
+    default:
+      printf("FDDI reserved frame 0x%02x\n", fc);
+      return;
+    }
 }

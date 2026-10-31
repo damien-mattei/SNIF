@@ -31,3 +31,12 @@ typedef struct _FDDIHdr
     u_int8_t daddr[FDDI_ALEN];  /* src address */
     u_int8_t saddr[FDDI_ALEN];  /* dst address */
 }         FDDIHdr;
+
+/* frame control field: C L F F Z Z Z Z (class, address length, format, control) */
+#define FDDI_FC_SYNC                0x80    /* synchronous class */
+#define FDDI_FC_FORMAT(fc)          (((fc) >> 4) & 0x03)
+#define FDDI_FC_FORMAT_SMT_MAC      0
+#define FDDI_FC_FORMAT_LLC          1
+#define FDDI_FC_FORMAT_IMPLEMENTER  2
+#define FDDI_FC_TOKEN               0x80    /* non-restricted token */
+#define FDDI_FC_RESTRICTED_TOKEN    0xc0

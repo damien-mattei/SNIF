@@ -252,6 +252,76 @@ char * EtherVendor(u_int8_t * mac)
  *
  * Returns: void function
  */
+/*
+ * Function: PrintLinkAddresses(const char *, u_int8_t *, u_int8_t *, int)
+ *
+ * Purpose: print the name of a link layer, the source and destination
+ *          hardware addresses, then their vendors (Token Ring, FDDI)
+ *
+ * Arguments: name => name of the link layer
+ *            src, dst => the 6 bytes addresses
+ *            noncanonical => 1 when the bits of each byte are in the
+ *                            transmission order of Token Ring, reversed
+ *                            from Ethernet: they are printed as they
+ *                            are, and reversed to find the vendor
+ *
+ * Returns: void function
+ */
+void PrintLinkAddresses(const char * name, u_int8_t * src, u_int8_t * dst, int noncanonical)
+{
+  u_int8_t csrc[6], cdst[6]; /* canonical order */
+  int i, b;
+
+  printf("%s ", name);
+
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
+  printf("%x:%x:%x:%x:%x:%x", src[0], src[1], src[2], src[3], src[4], src[5]);
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( DATA_LINK_LAYER_COLOR );
+  }
+
+  printf(" > ");
+
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
+  printf("%x:%x:%x:%x:%x:%x", dst[0], dst[1], dst[2], dst[3], dst[4], dst[5]);
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( DATA_LINK_LAYER_COLOR );
+  }
+
+  printf("\n");
+
+  if (!show_eth_vend) {
+    return;
+  }
+
+  for (i = 0; i < 6; i++) {
+    csrc[i] = src[i];
+    cdst[i] = dst[i];
+    if (noncanonical) {
+      for (csrc[i] = cdst[i] = 0, b = 0; b < 8; b++) {
+	csrc[i] |= ((src[i] >> b) & 1) << (7 - b);
+	cdst[i] |= ((dst[i] >> b) & 1) << (7 - b);
+      }
+    }
+  }
+
+  if (noncanonical) {
+    csrc[0] &= 0xfe; /* the routing information indicator is not part of the address */
+  }
+
+  printf("%s > %s\n", EtherVendor(csrc),
+	 IsBroadcastMAC(dst) ? "broadcast"
+	 : (noncanonical && (dst[0] == 0xc0) && (dst[1] == 0x00)) ? "functional address" /* Token Ring */
+	 : EtherVendor(cdst));
+}
+
+
 void DecodeEthPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 {
     /* a frame from our own interface is sent by us */
