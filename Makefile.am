@@ -42,6 +42,8 @@ tcp.c tcp.h \
 udp.c udp.h \
 dns.c dns.h \
 dhcp.c dhcp.h \
+ntp.c ntp.h \
+ssdp.c ssdp.h \
 gre.c gre.h \
 terminal.h \
 color.h

@@ -117,7 +117,7 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
 	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
-	dhcp.$(OBJEXT) gre.$(OBJEXT)
+	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -142,13 +142,13 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
-	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
+	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po ./$(DEPDIR)/ntp.Po \
 	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
 	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/raw.Po \
 	./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po ./$(DEPDIR)/snap.Po \
-	./$(DEPDIR)/snif.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
-	./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
+	./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po \
+	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
 	./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
@@ -372,6 +372,8 @@ tcp.c tcp.h \
 udp.c udp.h \
 dns.c dns.h \
 dhcp.c dhcp.h \
+ntp.c ntp.h \
+ssdp.c ssdp.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -514,6 +516,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/llc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loopback.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oldpflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ppp.Po@am__quote@ # am--include-marker
@@ -524,6 +527,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sll.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snap.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/snif.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssdp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tokenring.Po@am__quote@ # am--include-marker
@@ -865,6 +869,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
 	-rm -f ./$(DEPDIR)/ppp.Po
@@ -875,6 +880,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/sll.Po
 	-rm -f ./$(DEPDIR)/snap.Po
 	-rm -f ./$(DEPDIR)/snif.Po
+	-rm -f ./$(DEPDIR)/ssdp.Po
 	-rm -f ./$(DEPDIR)/stp.Po
 	-rm -f ./$(DEPDIR)/tcp.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po
@@ -948,6 +954,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
 	-rm -f ./$(DEPDIR)/ppp.Po
@@ -958,6 +965,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/sll.Po
 	-rm -f ./$(DEPDIR)/snap.Po
 	-rm -f ./$(DEPDIR)/snif.Po
+	-rm -f ./$(DEPDIR)/ssdp.Po
 	-rm -f ./$(DEPDIR)/stp.Po
 	-rm -f ./$(DEPDIR)/tcp.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po

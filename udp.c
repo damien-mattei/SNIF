@@ -54,6 +54,10 @@
 
 #include "dhcp.h"
 
+#include "ntp.h"
+
+#include "ssdp.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -183,6 +187,12 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     else if ((sp == DHCP6_CLIENT_PORT) || (dp == DHCP6_CLIENT_PORT)
 	     || (sp == DHCP6_SERVER_PORT) || (dp == DHCP6_SERVER_PORT)) {
       DecodeDHCP6(data, dsize);
+    }
+    else if ((sp == NTP_PORT) || (dp == NTP_PORT)) {
+      DecodeNTP(data, dsize);
+    }
+    else if ((sp == SSDP_PORT) || (dp == SSDP_PORT)) {
+      DecodeSSDP(data, dsize);
     }
 }
 
