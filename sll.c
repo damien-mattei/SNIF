@@ -175,7 +175,7 @@ static void DecodeSLLProtocol(u_int16_t proto, u_int8_t * pkt, u_int32_t len)
       return; 
 	    
     default:
-      printf( "Unknown network protocol: code %d\n", proto);
+      PrintUnknownEtherType(proto);
       return;
     }
 

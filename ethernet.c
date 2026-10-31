@@ -74,6 +74,81 @@ extern int verb; /* verbose level
 extern struct hsearch_data htab_ethernet; /* hash table for ethernet */
 
 
+/* names of the ethertypes snif does not decode (IEEE registry) */
+static const struct {
+  u_int16_t type;
+  const char * name;
+} ether_type_name[] = {
+  { 0x0842, "Wake-on-LAN" },
+  { 0x22f0, "Audio Video Transport Protocol (AVTP)" },
+  { 0x22f3, "TRILL" },
+  { 0x6002, "DEC MOP remote console" },
+  { 0x6003, "DECnet" },
+  { 0x6004, "DEC LAT" },
+  { 0x809b, "AppleTalk" },
+  { 0x80f3, "AppleTalk ARP" },
+  { 0x8808, "Ethernet flow control (pause)" },
+  { 0x8809, "Slow protocols (LACP, link OAM)" },
+  { 0x8819, "CobraNet" },
+  { 0x8847, "MPLS unicast" },
+  { 0x8848, "MPLS multicast" },
+  { 0x8870, "Jumbo frame" },
+  { 0x887b, "HomePlug 1.0" },
+  { 0x8892, "PROFINET" },
+  { 0x8899, "Realtek RRCP/RLDP" },
+  { 0x88a2, "ATA over Ethernet" },
+  { 0x88a4, "EtherCAT" },
+  { 0x88b5, "Local experimental 1" },
+  { 0x88b6, "Local experimental 2" },
+  { 0x88b7, "OUI extended" },
+  { 0x88b8, "GOOSE (IEC 61850)" },
+  { 0x88ba, "Sampled values (IEC 61850)" },
+  { 0x88c7, "802.11i pre-authentication" },
+  { 0x88cc, "LLDP (Link Layer Discovery Protocol)" },
+  { 0x88cd, "SERCOS III" },
+  { 0x88d9, "LLTD (Link Layer Topology Discovery)" },
+  { 0x88e1, "HomePlug AV (power line)" },
+  { 0x88e3, "Media Redundancy Protocol" },
+  { 0x88e5, "MACsec" },
+  { 0x88e7, "Provider Backbone Bridges (802.1ah)" },
+  { 0x88f7, "PTP (Precision Time Protocol)" },
+  { 0x88f8, "NC-SI" },
+  { 0x88fb, "Parallel Redundancy Protocol" },
+  { 0x8902, "Connectivity Fault Management (802.1ag)" },
+  { 0x8906, "Fibre Channel over Ethernet" },
+  { 0x8914, "FCoE initialization" },
+  { 0x8915, "RDMA over Converged Ethernet" },
+  { 0x892f, "High-availability Seamless Redundancy" },
+  { 0x893a, "IEEE 1905.1 (home network, Wi-Fi mesh)" },
+  { 0x0000, NULL }
+};
+
+
+/*
+ * Function: PrintUnknownEtherType(u_int16_t)
+ *
+ * Purpose: say which protocol a frame carries when snif does not decode it
+ *          (shared by Ethernet, VLAN, SNAP and Linux cooked captures)
+ *
+ * Arguments: type => the ethertype
+ *
+ * Returns: void function
+ */
+void PrintUnknownEtherType(u_int16_t type)
+{
+  int i;
+
+  for (i = 0; ether_type_name[i].name != NULL; i++) {
+    if (ether_type_name[i].type == type) {
+      printf("Ethertype 0x%04x: %s, not decoded\n", type, ether_type_name[i].name);
+      return;
+    }
+  }
+
+  printf("Unknown ethertype 0x%04x\n", type);
+}
+
+
 /*
  * Function: IsBroadcastMAC(u_int8_t *)
  *
@@ -458,7 +533,7 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
 	return; 
 	
       default:
-	printf("Unknown network protocol: code %d\n",ntohs(eptr->ether_type));
+	PrintUnknownEtherType(ntohs(eptr->ether_type));
 	return;
 
       }
