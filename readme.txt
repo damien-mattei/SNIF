@@ -48,7 +48,8 @@ snif -h gives the list of all the options.
 decoded protocols (the layers are shown in different colors):
 
 link layer   : Ethernet (vendor of the cards), 802.3/LLC/SNAP, VLAN 802.1Q
-               and QinQ, PPPoE, PPP, Linux cooked captures (SLL, SLL2),
+               and QinQ, PPPoE, PPP (LCP, IPCP, IPV6CP, CCP, PAP, CHAP,
+               EAP), Linux cooked captures (SLL, SLL2),
                Wi-Fi 802.11 and radiotap, EAPOL/EAP, Token Ring, FDDI,
                Spanning Tree (STP, RSTP, MSTP, PVST+), LLDP, CDP, LACP and
                the slow protocols, MPLS, HomePlug 1.0 and AV (power line),

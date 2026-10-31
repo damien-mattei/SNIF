@@ -110,19 +110,20 @@ am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man1dir)" \
 PROGRAMS = $(sbin_PROGRAMS)
 am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
-	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppserial.$(OBJEXT) \
-	slip.$(OBJEXT) wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) \
-	pflog.$(OBJEXT) oldpflog.$(OBJEXT) eap.$(OBJEXT) \
-	pppoe.$(OBJEXT) loopback.$(OBJEXT) raw.$(OBJEXT) \
-	i4lrawip.$(OBJEXT) i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) \
-	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
-	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
-	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
-	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
-	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
-	mpls.$(OBJEXT) homeplug.$(OBJEXT) iproto.$(OBJEXT) \
-	routing.$(OBJEXT) tunnel.$(OBJEXT) vpn.$(OBJEXT) \
-	text.$(OBJEXT) services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
+	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
+	pppserial.$(OBJEXT) slip.$(OBJEXT) wifi.$(OBJEXT) \
+	chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
+	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
+	loopback.$(OBJEXT) raw.$(OBJEXT) i4lrawip.$(OBJEXT) \
+	i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) arp.$(OBJEXT) ip.$(OBJEXT) \
+	ipv6.$(OBJEXT) ipx.$(OBJEXT) ethlb.$(OBJEXT) icmp.$(OBJEXT) \
+	icmp6.$(OBJEXT) igmp.$(OBJEXT) stp.$(OBJEXT) tcp.$(OBJEXT) \
+	udp.$(OBJEXT) dns.$(OBJEXT) dhcp.$(OBJEXT) ntp.$(OBJEXT) \
+	ssdp.$(OBJEXT) tls.$(OBJEXT) quic.$(OBJEXT) \
+	discovery.$(OBJEXT) slow.$(OBJEXT) mpls.$(OBJEXT) \
+	homeplug.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
+	tunnel.$(OBJEXT) vpn.$(OBJEXT) text.$(OBJEXT) \
+	services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -151,7 +152,7 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
 	./$(DEPDIR)/misc.Po ./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po \
 	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
-	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
+	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po ./$(DEPDIR)/pppoe.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
 	./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
 	./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
@@ -360,6 +361,7 @@ llc.c llc.h \
 snap.c snap.h \
 enc.c enc.h \
 ppp.c ppp.h \
+pppctl.c pppctl.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -558,6 +560,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oldpflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ppp.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppctl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppoe.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppserial.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quic.Po@am__quote@ # am--include-marker
@@ -967,6 +970,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
 	-rm -f ./$(DEPDIR)/ppp.Po
+	-rm -f ./$(DEPDIR)/pppctl.Po
 	-rm -f ./$(DEPDIR)/pppoe.Po
 	-rm -f ./$(DEPDIR)/pppserial.Po
 	-rm -f ./$(DEPDIR)/quic.Po
@@ -1065,6 +1069,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
 	-rm -f ./$(DEPDIR)/ppp.Po
+	-rm -f ./$(DEPDIR)/pppctl.Po
 	-rm -f ./$(DEPDIR)/pppoe.Po
 	-rm -f ./$(DEPDIR)/pppserial.Po
 	-rm -f ./$(DEPDIR)/quic.Po

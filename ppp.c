@@ -39,6 +39,10 @@
 #include "snif.h" /* function names definitions */
 
 #include "ppp.h"
+
+#include "pppctl.h"
+
+#include "mpls.h"
 #include "chdlc.h"
 
 
@@ -183,15 +187,20 @@ void DecodePppPktEncapsulated( u_int8_t * pkt,u_int32_t len)
 	    DecodeIPV6(pkt + hlen, len - hlen, NULL);
             break;
 
+        case PPP_MPLS:
+	    DecodeMPLS(pkt + hlen, len - hlen, NULL);
+            break;
+
         default:
-	    printf("PPP protocol 0x%04X %s(not decoded)\n", protocol,
-		   (protocol == PPP_LCP) ? "Link Control Protocol " :
-		   (protocol == PPP_IPCP) ? "IP Control Protocol " :
-		   (protocol == PPP_IPV6CP) ? "IPv6 Control Protocol " :
-		   (protocol == PPP_CCP) ? "Compression Control Protocol " :
-		   (protocol == PPP_COMP) ? "compressed datagram " :
-		   (protocol == PPP_PAP) ? "Password Authentication Protocol " :
-		   (protocol == PPP_CHAP) ? "Challenge Handshake Authentication Protocol " : "");
+	    if (IsPPPControl(protocol)) {
+	      DecodePPPControl(protocol, pkt + hlen, len - hlen);
+	    }
+	    else {
+	      const char * name = PPPProtocolName(protocol);
+
+	      printf("PPP protocol 0x%04X %s%s(not decoded)\n", protocol,
+		     name ? name : "", name ? " " : "");
+	    }
             break;
     }
 }

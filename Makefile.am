@@ -15,6 +15,7 @@ llc.c llc.h \
 snap.c snap.h \
 enc.c enc.h \
 ppp.c ppp.h \
+pppctl.c pppctl.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
