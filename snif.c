@@ -1978,7 +1978,7 @@ int main(int argc, char **argv) {
          promisuous mode)                                               */
 
 
-      descr = pcap_open_live(dev,BUFSIZ,promisc,PACKETS_READ_TIMEOUT,errbuf);
+      descr = pcap_open_live(dev,SNAPLEN,promisc,PACKETS_READ_TIMEOUT,errbuf);
 
       if(descr == NULL)
         {

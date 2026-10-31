@@ -290,6 +290,23 @@ char * EtherVendor(u_int8_t * mac)
  *
  * Returns: void function
  */
+/* the null address of the loopback interface, which the IEEE
+ * registry lists as "Officially Xerox" */
+static int IsNullMAC(const u_int8_t * addr)
+{
+  static const u_int8_t null_mac[6] = { 0, 0, 0, 0, 0, 0 };
+
+  return memcmp(addr, null_mac, 6) == 0;
+}
+
+
+/* vendor of an address, except the null one */
+static const char * LinkVendor(u_int8_t * addr)
+{
+  return IsNullMAC(addr) ? "null address" : EtherVendor(addr);
+}
+
+
 void PrintLinkAddresses(const char * name, u_int8_t * src, u_int8_t * dst, int noncanonical)
 {
   u_int8_t csrc[6], cdst[6]; /* canonical order */
@@ -338,10 +355,10 @@ void PrintLinkAddresses(const char * name, u_int8_t * src, u_int8_t * dst, int n
     csrc[0] &= 0xfe; /* the routing information indicator is not part of the address */
   }
 
-  printf("%s > %s\n", EtherVendor(csrc),
+  printf("%s > %s\n", LinkVendor(csrc),
 	 IsBroadcastMAC(dst) ? "broadcast"
 	 : (noncanonical && (dst[0] == 0xc0) && (dst[1] == 0x00)) ? "functional address" /* Token Ring */
-	 : EtherVendor(cdst));
+	 : LinkVendor(cdst));
 }
 
 
@@ -507,6 +524,9 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
 	if (IsBroadcastMAC(eptr->ether_src)) {
 	  printf("Broadcast addressing");
 	}
+	else if (IsNullMAC(eptr->ether_src)) {
+	  printf("Null address");
+	}
 	else {
 	  printf("%s ethernet card", EtherVendor(eptr->ether_src));
 	}
@@ -524,6 +544,9 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
 
 	if (IsBroadcastMAC(eptr->ether_dst)) {
 	  printf("Broadcast addressing\n");
+	}
+	else if (IsNullMAC(eptr->ether_dst)) {
+	  printf("Null address\n");
 	}
 	else {
 	  printf("%s ethernet card\n", EtherVendor(eptr->ether_dst));
