@@ -40,6 +40,7 @@ igmp.c igmp.h \
 stp.c stp.h \
 tcp.c tcp.h \
 udp.c udp.h \
+dns.c dns.h \
 gre.c gre.h \
 terminal.h \
 color.h

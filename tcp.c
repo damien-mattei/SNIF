@@ -51,6 +51,8 @@
 
 #include "tcp.h"
 
+#include "dns.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -285,6 +287,99 @@ static void DecodeTCPOptions(u_int8_t * ptr, u_int32_t len)
 
 
 /*
+ * Function: CheckTCPChecksum(u_int8_t *, const u_int32_t, IPHdr *, IP6RawHdr *)
+ *
+ * Purpose: verify the TCP checksum
+ *
+ * Arguments: pkt => ptr to the TCP header
+ *            len => length of the TCP segment (header and data)
+ *            iptr=> ptr to th IP header (NULL over IPv6)
+ *            ip6ptr=> ptr to the IPv6 header (NULL over IPv4)
+ *
+ * Returns: void function
+ */
+static void CheckTCPChecksum(u_int8_t * pkt, const u_int32_t len, IPHdr * iptr, IP6RawHdr * ip6ptr)
+{
+
+  TCPHdr * tcptr = (TCPHdr *) pkt;
+
+  u_short csum;              /* checksum */
+
+  struct pseudoheader       /* pseudo header for TCP checksum calculations */
+  {
+    u_int32_t sip, dip;   /* IP addr */
+    u_int8_t  zero;       /* checksum placeholder */
+    u_int8_t  protocol;   /* protocol number */
+    u_int16_t tcplen;     /* tcp packet length */
+  };
+  
+  struct pseudoheader ph;    /* pseudo header declaration */
+
+  /* if we're being "stateless" we probably don't care about the TCP 
+   * checksum, but it's not bad to keep around for shits and giggles */
+  if (!check_cksum) { /* -K: the network card may compute it after capture */
+    return;
+  }
+
+  if (outgoing_pkt) { /* not computed yet when we captured it */
+    if (verb > 0) {
+      printf("TCP Checksum: not verified (sent by us, computed by the network card)\n");
+    }
+    return;
+  }
+
+  /* calculate the checksum */
+  if (ip6ptr != NULL) { /* the IPv6 pseudo header is not the same */
+    csum = in_chksum_ip6(ip6ptr, IP_PROTO_TCP, pkt, len);
+  }
+  else {
+    /* setup the pseudo header for checksum calculation */
+    ph.sip = (u_int32_t)(iptr->ip_src.s_addr); /* unsigned long int */
+    ph.dip = (u_int32_t)(iptr->ip_dst.s_addr);
+    ph.zero = 0;
+    ph.protocol = iptr->ip_proto;
+    ph.tcplen = htons((u_short)len);
+
+    csum = in_chksum_tcp((u_int16_t *)&ph, (u_int16_t *)(tcptr), len);
+  }
+        
+  if(csum)
+    {
+      /* in_chksum_tcp sums the words in memory order, in_chksum_ip6 in network order */
+      printf("Bad TCP checksum 0x%04x (should be 0x%04x)\n", ntohs(tcptr->th_sum),
+	     expected_cksum((ip6ptr != NULL) ? csum : ntohs(csum), ntohs(tcptr->th_sum)));
+    }
+  else
+    {
+      if (verb >0) {
+	printf("TCP Checksum: OK\n");
+      }
+    }
+
+}
+
+
+/*
+ * Function: DecodeTCPPayload(u_int16_t, u_int16_t, u_int8_t *, u_int32_t)
+ *
+ * Purpose: decode the application layer carried by TCP, chosen by port
+ *          (only what is in this segment, there is no stream reassembly)
+ *
+ * Arguments: sp, dp => source and destination ports
+ *            data => ptr to the TCP data
+ *            dsize => length of the TCP data
+ *
+ * Returns: void function
+ */
+static void DecodeTCPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int32_t dsize)
+{
+  if ((sp == DNS_PORT) || (dp == DNS_PORT)) {
+    DecodeDNSOverTCP(data, dsize);
+  }
+}
+
+
+/*
  * Function: DecodeTCP(u_int8_t *, const u_int32_t,IPHdr *,IP6RawHdr *)
  *
  * Purpose: Decode the TCP transport layer,
@@ -303,17 +398,6 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   TCPHdr * tcptr;
 
   u_int32_t hlen;            /* TCP header length */
-  u_short csum;              /* checksum */
-
-  struct pseudoheader       /* pseudo header for TCP checksum calculations */
-  {
-    u_int32_t sip, dip;   /* IP addr */
-    u_int8_t  zero;       /* checksum placeholder */
-    u_int8_t  protocol;   /* protocol number */
-    u_int16_t tcplen;     /* tcp packet length */
-  };
-  
-  struct pseudoheader ph;    /* pseudo header declaration */
   u_int32_t tcp_options_len;
   u_int16_t sp;       /* source port TCP */
   u_int16_t dp;       /* dest port TCP */
@@ -398,45 +482,11 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     printf("Payload: %u bytes\n", dsize);
   }
 
-  /* if we're being "stateless" we probably don't care about the TCP 
-   * checksum, but it's not bad to keep around for shits and giggles */
-  if (!check_cksum) { /* -K: the network card may compute it after capture */
-    return;
-  }
+  CheckTCPChecksum(pkt, len, iptr, ip6ptr);
 
-  if (outgoing_pkt) { /* not computed yet when we captured it */
-    if (verb > 0) {
-      printf("TCP Checksum: not verified (sent by us, computed by the network card)\n");
-    }
-    return;
+  /* application layer */
+  if (dsize > 0) {
+    DecodeTCPPayload(sp, dp, pkt + hlen, dsize);
   }
-
-  /* calculate the checksum */
-  if (ip6ptr != NULL) { /* the IPv6 pseudo header is not the same */
-    csum = in_chksum_ip6(ip6ptr, IP_PROTO_TCP, pkt, len);
-  }
-  else {
-    /* setup the pseudo header for checksum calculation */
-    ph.sip = (u_int32_t)(iptr->ip_src.s_addr); /* unsigned long int */
-    ph.dip = (u_int32_t)(iptr->ip_dst.s_addr);
-    ph.zero = 0;
-    ph.protocol = iptr->ip_proto;
-    ph.tcplen = htons((u_short)len);
-
-    csum = in_chksum_tcp((u_int16_t *)&ph, (u_int16_t *)(tcptr), len);
-  }
-        
-  if(csum)
-    {
-      /* in_chksum_tcp sums the words in memory order, in_chksum_ip6 in network order */
-      printf("Bad TCP checksum 0x%04x (should be 0x%04x)\n", ntohs(tcptr->th_sum),
-	     expected_cksum((ip6ptr != NULL) ? csum : ntohs(csum), ntohs(tcptr->th_sum)));
-    }
-  else
-    {
-      if (verb >0) {
-	printf("TCP Checksum: OK\n");
-      }
-    }
 
 }
