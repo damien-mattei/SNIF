@@ -31,9 +31,19 @@
 
 #include <pcap.h>
 
+#include <string.h>
+
 #include <netinet/in.h>
 
 #include <search.h> /* added for hash tables */
+
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netinet/if_ether.h> /* includes net/ethernet.h */
+
+#ifdef HAVE_NETINET_ETHER_H
+#include <netinet/ether.h> /* needed for ether_ntoa */
+#endif
 
 #include "terminal.h" /* escape sequences for color,... */
 
@@ -42,51 +52,221 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
+#include "ethernet.h"
+
+#include "arp.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
 
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
+
+extern int resolv_ip; /* resolve or not IP address in hostname */
+
+
 /*
- * Function: DecodeARP(u_int8_t *, const u_int32_t)
+ * Function: printARPMAC(u_int8_t *)
  *
- * Purpose: For now, just print that we get an ARP packet !
+ * Purpose: print an ethernet hardware address found in an ARP packet
  *
- * Arguments: pkt => ptr to the packet data
- *            len => length from here to the end of the packet
+ * Arguments: mac => ptr to the 6 bytes of the hardware address
  *
  * Returns: void function
  */
-/* void DecodeARP(u_int8_t *, const u_int32_t) */
-void DecodeARP()
+static void printARPMAC(u_int8_t * mac)
 {
 
+#ifndef  HAVE_ETHER_NTOA
+  int i;
+#endif
+
   if (send_esc) {
-    SETCOLOR(IP_COLOR);
+    SETATTRIB( BRIGHT );
   }
-  printf("ARP packet\n");
-  return;
+
+#ifdef  HAVE_ETHER_NTOA
+
+  printf("%s",ether_ntoa((struct ether_addr *)mac));
+
+#else
+
+  i = ARP_HW_ADDR_LEN;
+  do {
+    printf("%s%x",(i == ARP_HW_ADDR_LEN) ? "" : ":",*mac++);
+  } while(--i>0);
+
+#endif
+
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( ARP_COLOR );
+  }
 
 }
 
 
 /*
- * Function: DecodeReverseARP(u_int8_t *, const u_int32_t)
+ * Function: printARPIP(u_int8_t *)
  *
- * Purpose: For now, just print that we get a reverse ARP packet !
+ * Purpose: print an IPv4 address found in an ARP packet
+ *          and resolve it in hostname if asked
+ *
+ * Arguments: ip => ptr to the 4 bytes of the IP address
+ *
+ * Returns: void function
+ */
+static void printARPIP(u_int8_t * ip)
+{
+
+  struct in_addr addr; /* aligned copy of the address */
+
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
+
+  printf("%d.%d.%d.%d",*ip,*(ip+1),*(ip+2),*(ip+3));
+
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( ARP_COLOR );
+  }
+
+  if (resolv_ip) {
+    memcpy(&addr,ip,ARP_PROTO_ADDR_LEN);
+    printResolvedIP((char*)&addr);
+  }
+
+}
+
+
+/*
+ * Function: DecodeARP(u_int8_t *, const u_int32_t)
+ *
+ * Purpose: Decode ARP and Reverse ARP packets
+ *          (the operation code tells ARP from RARP),
+ *          display based on PrintArpHeader of snort 2.9.20 log.c
  *
  * Arguments: pkt => ptr to the packet data
  *            len => length from here to the end of the packet
  *
  * Returns: void function
  */
-/* void DecodeReverseARP(u_int8_t *, const u_int32_t) */
-void DecodeReverseARP()
+void DecodeARP(u_int8_t * pkt, const u_int32_t len)
 {
 
+  EtherARP * arptr;
+
+  u_int16_t hrd; /* hardware address format */
+  u_int16_t pro; /* protocol address format */
+  u_int16_t op;  /* operation code */
+
   if (send_esc) {
-    SETCOLOR(IP_COLOR);
+    SETCOLOR(ARP_COLOR);
   }
-  printf("Reverse ARP packet\n");
+
+  if (len < sizeof(EtherARP)) {
+    printf("Truncated ARP packet (%d bytes)\n", len);
+    return;
+  }
+
+  /* lay the ARP structure over the packet data */
+  arptr = (EtherARP *) pkt;
+
+  hrd = ntohs(arptr->ea_hdr.ar_hrd);
+  pro = ntohs(arptr->ea_hdr.ar_pro);
+  op = ntohs(arptr->ea_hdr.ar_op);
+
+  if (verb > 0) {
+    printf("ARP hardware type: %d%s   protocol type: 0x%04X%s\n",
+	   hrd, (hrd == ARPHRD_ETHER) ? " (Ethernet)" : "",
+	   pro, (pro == ETHERNET_TYPE_IP) ? " (IP)" : "");
+    printf("Hardware address length: %d   Protocol address length: %d   Operation: %d\n",
+	   arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln, op);
+  }
+
+  /* we only know how to read ethernet/IPv4 addresses */
+  if ((hrd != ARPHRD_ETHER) || (pro != ETHERNET_TYPE_IP)
+      || (arptr->ea_hdr.ar_hln != ARP_HW_ADDR_LEN)
+      || (arptr->ea_hdr.ar_pln != ARP_PROTO_ADDR_LEN)) {
+    printf("ARP #%d for protocol 0x%04X hardware #%d (hln %d, pln %d)\n",
+	   op, pro, hrd, arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln);
+    return;
+  }
+
+  if (verb > 0) {
+    printf("Sender: ");
+    printARPMAC(arptr->arp_sha);
+    printf(" ");
+    printARPIP(arptr->arp_spa);
+    printf("\nTarget: ");
+    printARPMAC(arptr->arp_tha);
+    printf(" ");
+    printARPIP(arptr->arp_tpa);
+    printf("\n");
+  }
+
+  switch(op)
+    {
+
+    case ARPOP_REQUEST:
+      printf("ARP who-has ");
+      printARPIP(arptr->arp_tpa);
+      printf(" tell ");
+      printARPIP(arptr->arp_spa);
+      printf("\n");
+      break;
+
+    case ARPOP_REPLY:
+      printf("ARP reply ");
+      printARPIP(arptr->arp_spa);
+      printf(" is-at ");
+      printARPMAC(arptr->arp_sha);
+      printf("\n");
+      break;
+
+    case ARPOP_RREQUEST:
+      printf("RARP who-is ");
+      printARPMAC(arptr->arp_tha);
+      printf(" tell ");
+      printARPMAC(arptr->arp_sha);
+      printf("\n");
+      break;
+
+    case ARPOP_RREPLY:
+      printf("RARP reply ");
+      printARPMAC(arptr->arp_tha);
+      printf(" at ");
+      printARPIP(arptr->arp_tpa);
+      printf("\n");
+      break;
+
+    case ARPOP_INVREQUEST:
+      printf("InARP request who-is ");
+      printARPMAC(arptr->arp_tha);
+      printf(" tell ");
+      printARPIP(arptr->arp_spa);
+      printf("\n");
+      break;
+
+    case ARPOP_INVREPLY:
+      printf("InARP reply ");
+      printARPMAC(arptr->arp_sha);
+      printf(" at ");
+      printARPIP(arptr->arp_spa);
+      printf("\n");
+      break;
+
+    default:
+      printf("ARP unknown operation: %d\n", op);
+      break;
+
+    }
+
   return;
 
 }

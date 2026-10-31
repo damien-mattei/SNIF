@@ -20,55 +20,94 @@
  *
  ****************************************************************************/
 
-/* see: http://grouper.ieee.org/groups/802/11/Tutorial/MAC.pdf */
+/* IEEE 802.11 (Wi-Fi) definitions, from the IEEE 802.11-2020 standard
+ * (snort only decodes the data frames) */
 
-/*
- *  Wireless Header (IEEE 802.11)
- */
-typedef struct _WifiHdr
-{
-  u_int16_t frame_control;
-  u_int16_t duration_id;
-  u_int8_t  addr1[6];
-  u_int8_t  addr2[6];
-  u_int8_t  addr3[6];
-  u_int16_t seq_control;
-  u_int8_t  addr4[6];
-} WifiHdr;
+/* first byte of the frame control field: version, type, subtype */
+#define WLAN_FC_VERSION(b0)     ((b0) & 0x03)
+#define WLAN_FC_TYPE(b0)        (((b0) >> 2) & 0x03)
+#define WLAN_FC_SUBTYPE(b0)     (((b0) >> 4) & 0x0F)
 
+/* frame types */
+#define WLAN_TYPE_MGMT          0       /* management */
+#define WLAN_TYPE_CTRL          1       /* control */
+#define WLAN_TYPE_DATA          2       /* data */
+#define WLAN_TYPE_EXT           3       /* extension */
 
-#define MINIMAL_IEEE80211_HEADER_LEN    10    /* Ack frames and others */
-#define IEEE802_11_DATA_HDR_LEN         24    /* Header for data packets */
+/* second byte of the frame control field: flags */
+#define WLAN_FC_TODS            0x01    /* to the distribution system (AP) */
+#define WLAN_FC_FROMDS          0x02    /* from the distribution system */
+#define WLAN_FC_MOREFRAG        0x04
+#define WLAN_FC_RETRY           0x08
+#define WLAN_FC_PWRMGT          0x10    /* station goes to power save */
+#define WLAN_FC_MOREDATA        0x20
+#define WLAN_FC_PROTECTED       0x40    /* encrypted body */
+#define WLAN_FC_ORDER           0x80    /* HT control field present (QoS) */
 
-#define	TO_DS(fc)		((fc) & 0x0100)
-#define	FROM_DS(fc)		((fc) & 0x0200)
+/* management subtypes */
+#define WLAN_MGMT_ASSOC_REQ     0
+#define WLAN_MGMT_ASSOC_RESP    1
+#define WLAN_MGMT_REASSOC_REQ   2
+#define WLAN_MGMT_REASSOC_RESP  3
+#define WLAN_MGMT_PROBE_REQ     4
+#define WLAN_MGMT_PROBE_RESP    5
+#define WLAN_MGMT_BEACON        8
+#define WLAN_MGMT_ATIM          9
+#define WLAN_MGMT_DISASSOC      10
+#define WLAN_MGMT_AUTH          11
+#define WLAN_MGMT_DEAUTH        12
+#define WLAN_MGMT_ACTION        13
+#define WLAN_MGMT_ACTION_NOACK  14
 
-/* Frame type/subype combinations with version = 0 */
-        /*** FRAME TYPE *****  HEX ****  SUBTYPE TYPE  DESCRIPT ********/
-#define WLAN_TYPE_MGMT_ASREQ   0x0      /* 0000    00  Association Req */
-#define WLAN_TYPE_MGMT_ASRES   0x10     /* 0001    00  Assocaition Res */
-#define WLAN_TYPE_MGMT_REREQ   0x20     /* 0010    00  Reassoc. Req.   */
-#define WLAN_TYPE_MGMT_RERES   0x30     /* 0011    00  Reassoc. Resp.  */
-#define WLAN_TYPE_MGMT_PRREQ   0x40     /* 0100    00  Probe Request   */
-#define WLAN_TYPE_MGMT_PRRES   0x50     /* 0101    00  Probe Response  */ 
-#define WLAN_TYPE_MGMT_BEACON  0x80     /* 1000    00  Beacon          */
-#define WLAN_TYPE_MGMT_ATIM    0x90     /* 1001    00  ATIM message    */
-#define WLAN_TYPE_MGMT_DIS     0xa0     /* 1010    00  Disassociation  */
-#define WLAN_TYPE_MGMT_AUTH    0xb0     /* 1011    00  Authentication  */
-#define WLAN_TYPE_MGMT_DEAUTH  0xc0     /* 1100    00  Deauthentication*/
+/* control subtypes */
+#define WLAN_CTRL_BAR           8       /* Block Ack Request */
+#define WLAN_CTRL_BA            9       /* Block Ack */
+#define WLAN_CTRL_PSPOLL        10
+#define WLAN_CTRL_RTS           11
+#define WLAN_CTRL_CTS           12
+#define WLAN_CTRL_ACK           13
+#define WLAN_CTRL_CFEND         14
+#define WLAN_CTRL_CFEND_ACK     15
 
-#define WLAN_TYPE_CONT_PS      0xa4     /* 1010    01  Power Save      */
-#define WLAN_TYPE_CONT_RTS     0xb4     /* 1011    01  Request to send */
-#define WLAN_TYPE_CONT_CTS     0xc4     /* 1100    01  Clear to sene   */
-#define WLAN_TYPE_CONT_ACK     0xd4     /* 1101    01  Acknowledgement */
-#define WLAN_TYPE_CONT_CFE     0xe4     /* 1110    01  Cont. Free end  */
-#define WLAN_TYPE_CONT_CFACK   0xf4     /* 1111    01  CF-End + CF-Ack */
+/* data subtypes: bit 3 QoS, bit 2 no data */
+#define WLAN_DATA_QOS           0x08
+#define WLAN_DATA_NODATA        0x04
 
-#define WLAN_TYPE_DATA_DATA    0x08     /* 0000    10  Data            */
-#define WLAN_TYPE_DATA_DTCFACK 0x18     /* 0001    10  Data + CF-Ack   */
-#define WLAN_TYPE_DATA_DTCFPL  0x28     /* 0010    10  Data + CF-Poll  */
-#define WLAN_TYPE_DATA_DTACKPL 0x38     /* 0011    10  Data+CF-Ack+CF-Pl */
-#define WLAN_TYPE_DATA_NULL    0x48     /* 0100    10  Null (no data)  */
-#define WLAN_TYPE_DATA_CFACK   0x58     /* 0101    10  CF-Ack (no data)*/
-#define WLAN_TYPE_DATA_CFPL    0x68     /* 0110    10  CF-Poll (no data)*/
-#define WLAN_TYPE_DATA_ACKPL   0x78     /* 0111    10  CF-Ack+CF-Poll  */
+/* header lengths */
+#define WLAN_CTRL_SHORT_LEN     10      /* CTS, ACK: frame control, duration, RA */
+#define WLAN_CTRL_LEN           16      /* + TA */
+#define WLAN_HDR_LEN            24      /* management and data frames */
+#define WLAN_ADDR4_LEN          6       /* data from AP to AP (WDS, mesh) */
+#define WLAN_QOS_LEN            2
+#define WLAN_HTC_LEN            4
+#define WLAN_FCS_LEN            4
+
+/* information elements of the management frames */
+#define WLAN_EID_SSID           0
+#define WLAN_EID_RATES          1
+#define WLAN_EID_DS_PARAMS      3       /* current channel */
+#define WLAN_EID_COUNTRY        7
+#define WLAN_EID_HT_OPERATION   61      /* primary channel */
+#define WLAN_EID_EXT_RATES      50
+#define WLAN_EID_RSN            48      /* WPA2, WPA3 */
+#define WLAN_EID_VENDOR         221     /* WPA (v1) with OUI 00:50:F2 type 1 */
+
+/* capability information */
+#define WLAN_CAPAB_ESS          0x0001
+#define WLAN_CAPAB_IBSS         0x0002
+#define WLAN_CAPAB_PRIVACY      0x0010
+
+/* radiotap header (DLT_IEEE802_11_RADIO), see https://www.radiotap.org
+ * all the fields are little endian */
+#define RADIOTAP_HDR_LEN        8       /* version, pad, length, present */
+#define RADIOTAP_TSFT           0
+#define RADIOTAP_FLAGS          1
+#define RADIOTAP_RATE           2
+#define RADIOTAP_CHANNEL        3
+#define RADIOTAP_FHSS           4
+#define RADIOTAP_DBM_ANTSIGNAL  5
+#define RADIOTAP_DBM_ANTNOISE   6
+#define RADIOTAP_EXT            31      /* another present word follows */
+
+#define RADIOTAP_F_FCS          0x10    /* frame includes the FCS */
+#define RADIOTAP_F_BADFCS       0x40    /* frame failed the FCS check */

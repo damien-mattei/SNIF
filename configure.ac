@@ -1,20 +1,16 @@
 #                                               -*- Autoconf -*-
-# Process this file with autoconf to produce a configure script.
+# Process this file with autoconf to produce a configure script:
+#   autoreconf -fi && ./configure && make
 
-AC_PREREQ(2.57)
+AC_PREREQ([2.69])
 
-AC_INIT(snif.c)
+AC_INIT([snif],[1.0],[Damien.MATTEI@free.fr])
 
-AC_CONFIG_SRCDIR(snif.c)
+AC_CONFIG_SRCDIR([snif.c])
 
-AM_INIT_AUTOMAKE([snif],1.0,Damien.MATTEI@free.fr)
+AM_INIT_AUTOMAKE([foreign])
 
-AM_CONFIG_HEADER(config.h)
-
-# used for sfutil
-AC_PROG_RANLIB
-
-AM_PROG_CC_STDC
+AC_CONFIG_HEADERS([config.h])
 
 # Checks for programs.
 AC_PROG_CC
@@ -24,50 +20,30 @@ AC_PROG_CC
 
 # Checks for libraries.
 
-LPCAP=""
-AC_CHECK_LIB(pcap, pcap_datalink,, LPCAP="no")
-
-if test "$LPCAP" = "no"; then
-  echo
-  echo "   ERROR!  Libpcap library not found, go get it from"
-  echo "   http://www.tcpdump.org"
-  exit
-fi
-
+AC_CHECK_LIB(pcap, pcap_datalink,,
+  [AC_MSG_ERROR([Libpcap library not found, go get it from https://www.tcpdump.org
+   (or install the libpcap development package of your system)])])
 
 
 # Checks for header files.
-AC_HEADER_STDC
-AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h stdlib.h sys/ioctl.h sys/socket.h unistd.h ])
+AC_CHECK_HEADERS([arpa/inet.h netdb.h netinet/in.h stdlib.h sys/ioctl.h sys/socket.h unistd.h])
 
-# for older Linux system that use pcap library 
-if test -f /usr/include/pcap/pcap.h; then
-   INCLUDES=-I/usr/include/pcap
-fi
-#AC_CHECK_HEADERS([/usr/include/pcap/pcap.h],[INCLUDES=-I/usr/include/pcap])
+# Mac OS X.3 have not the file netinet/ether.h (see: man ether_ntoa )
+AC_CHECK_HEADERS([netinet/ether.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
 
 # Checks for library functions.
-AC_PROG_GCC_TRADITIONAL
-AC_FUNC_MALLOC
-AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([gethostbyaddr inet_ntoa memset socket])
-
 
 AC_CHECK_FUNC(hcreate_r, AC_DEFINE(HAVE_HCREATE_R,,[Define if have hcreate_r function]))
 
 AC_CHECK_FUNC(ether_ntoa, AC_DEFINE(HAVE_ETHER_NTOA,,[Define if have ether_ntoa function]))
 
-# Mac OS X.3 have not the file netinet/ether.h (see: man ether_ntoa )
-AC_CHECK_HEADERS(netinet/ether.h, AC_DEFINE(HAVE_NETINET_ETHER_H,,[Define if have netinet/ether.h header file]))
-
 
 AC_CANONICAL_HOST
-
-SHELL="/bin/sh"
 
 case "$host" in
 
@@ -75,7 +51,10 @@ case "$host" in
 
   AC_MSG_CHECKING(whether ether_ntoa is working well)
   AC_RUN_IFELSE([AC_LANG_SOURCE([[
+			 #include <stdio.h>
+			 #include <stdlib.h>
 			 #include <string.h>
+			 #include <sys/types.h>
 			 #include <netinet/ether.h>
 
 			int main(int argc, char **argv)
@@ -111,12 +90,6 @@ case "$host" in
 esac
 
 
+AC_CONFIG_FILES([Makefile])
 
-INCLUDES='-I$(top_srcdir) -I$(top_srcdir)/sfutil'
-
-AC_SUBST(INCLUDES)
-
-#AC_CONFIG_FILES([Makefile])
-
-AC_OUTPUT(Makefile	\
-sfutil/Makefile)
+AC_OUTPUT

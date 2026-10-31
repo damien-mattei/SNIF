@@ -51,8 +51,6 @@ int pkt_count = -1; /* number of captured packets
 
 int show_eth_vend = 1; /* show ethernet vendor codes */
 
-char * vendsrc; /* ethernet vendor code of source address */
-char * venddst; /* ethernet vendor code of destination address */
 
 int dump_link_layer = 1; /* dump network link layer info (ethernet address ,...) */
 
@@ -71,10 +69,6 @@ int text_port = 1; /* print the TCP/UDP port in text
 int not_wkp = 0; /* by default do not print in txt
 		  * ports that are not "Well Known Ports"
 		  */
-
-char * portsrc; /* source port name */
-
-char * portdst; /* destination port name */
 
 
 #ifndef HAVE_HCREATE_R
@@ -95,6 +89,14 @@ char smotif = '_'; /* separator motif */
 int sl0; /* back up value of sl */
 
 int resolv_ip = 0; /* resolve or not IP address in hostname */
+
+int check_cksum = 1; /* verify TCP and UDP checksums,
+		      * disabled by -K because the network card can
+		      * compute them after the capture (checksum offloading)
+		      */
+
+char * pcap_infile = NULL; /* read packets from a tcpdump file
+			    * instead of a network interface */
 
 struct winsize ws; /* used by ioctl to find the terminal window size */
 

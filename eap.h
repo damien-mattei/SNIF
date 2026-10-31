@@ -28,6 +28,7 @@
 #define EAPOL_TYPE_LOGOFF   0x02      /* EAPOL Logoff */
 #define EAPOL_TYPE_KEY      0x03      /* EAPOL Key */
 #define EAPOL_TYPE_ASF      0x04      /* EAPOL Encapsulated ASF-Alert */
+#define EAPOL_TYPE_MKA      0x05      /* MACsec Key Agreement (802.1X-2010) */
 
 /* Extensible Authentication Protocol Codes RFC 2284*/
 #define EAP_CODE_REQUEST    0x01   
@@ -42,6 +43,39 @@
 #define EAP_TYPE_OTP        0x05
 #define EAP_TYPE_GTC        0x06
 #define EAP_TYPE_TLS        0x0d
+#define EAP_TYPE_LEAP       0x11
+#define EAP_TYPE_SIM        0x12
+#define EAP_TYPE_TTLS       0x15
+#define EAP_TYPE_AKA        0x17
+#define EAP_TYPE_PEAP       0x19
+#define EAP_TYPE_MSCHAPV2   0x1a
+#define EAP_TYPE_FAST       0x2b
+#define EAP_TYPE_AKA_PRIME  0x32
+#define EAP_TYPE_EXPANDED   0xfe
+
+/* EAPOL-Key descriptor types */
+#define EAPOL_KEY_RC4       1         /* legacy 802.1X (WEP) */
+#define EAPOL_KEY_RSN       2         /* IEEE 802.11 RSN (WPA2, WPA3) */
+#define EAPOL_KEY_WPA       254       /* WPA (v1) */
+
+/* EAPOL-Key information field of RSN and WPA descriptors */
+#define EAPOL_KEYINFO_VERSION   0x0007   /* key descriptor version */
+#define EAPOL_KEYINFO_PAIRWISE  0x0008   /* pairwise key (else group key) */
+#define EAPOL_KEYINFO_INSTALL   0x0040
+#define EAPOL_KEYINFO_ACK       0x0080   /* sent by the authenticator (AP) */
+#define EAPOL_KEYINFO_MIC       0x0100
+#define EAPOL_KEYINFO_SECURE    0x0200
+#define EAPOL_KEYINFO_ERROR     0x0400
+#define EAPOL_KEYINFO_REQUEST   0x0800
+#define EAPOL_KEYINFO_ENCDATA   0x1000   /* encrypted key data */
+
+/* offsets in an RSN/WPA EAPOL-Key body (after the descriptor type) */
+#define EAPOL_KEY_INFO_OFF      0
+#define EAPOL_KEY_LEN_OFF       2
+#define EAPOL_KEY_REPLAY_OFF    4        /* replay counter, 8 bytes */
+#define EAPOL_KEY_NONCE_OFF     12       /* nonce, 32 bytes */
+#define EAPOL_KEY_DATALEN_OFF   92       /* key data length, with a 16 bytes MIC */
+#define EAPOL_KEY_MIN_LEN       94
 
 
 typedef struct _EtherEapol

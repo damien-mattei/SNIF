@@ -40,6 +40,8 @@
 /* needed for UDP, you know UDP rely on IP */
 #include "ip.h" 
 
+#include "ipv6.h" /* UDP can also rely on IPv6 */
+
 #include "terminal.h" /* escape sequences for color,... */
 
 #include "color.h" /* describe color and protocols */
@@ -52,19 +54,28 @@ extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
 
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
+
+extern int check_cksum; /* verify TCP and UDP checksums */
+
 
 /*
- * Function: DecodeUDP(u_int8_t *, const u_int32_t, IPHdr *)
+ * Function: DecodeUDP(u_int8_t *, const u_int32_t, IPHdr *, IP6RawHdr *)
  *
  * Purpose: Decode the UDP transport layer
  *
  * Arguments: pkt => ptr to the packet data
  *            len => length from here to the end of the packet
- *            iptr=> ptr to the IP header
+ *            iptr=> ptr to the IP header (NULL over IPv6)
+ *            ip6ptr=> ptr to the IPv6 header (NULL over IPv4)
  *
  * Returns: void function
  */
-void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
+void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6ptr)
 {
 
   
@@ -85,7 +96,6 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
     
     u_int16_t sp;       /* source port UDP */
     u_int16_t dp;       /* dest port UDP */
-    u_int8_t *data;     /* packet payload pointer */
     u_int16_t dsize;        /* packet payload size */
 
     if (send_esc) {
@@ -104,6 +114,12 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
 
     /* set the ptr to the start of the UDP header */
     udptr = (UDPHdr *) pkt;
+
+    /* source and destination ports */
+    sp = ntohs(udptr->uh_sport);
+    dp = ntohs(udptr->uh_dport);
+
+    PrintPorts(sp,dp,UDP_COLOR);
    
     uhlen = ntohs(udptr->uh_len);
         
@@ -111,7 +127,7 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
     if(uhlen < UDP_HEADER_LEN)
     {
        
-      printf("Invalid UDP Packet, length field < 8");
+      printf("Invalid UDP Packet, length field < 8\n");
       return;
     }
 
@@ -122,7 +138,18 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
       return;
     }
 
-    
+
+    /* length was validated up above */
+    dsize = uhlen - UDP_HEADER_LEN; 
+
+    if ((dsize > 0) || (verb > 0)) {
+      printf("Payload: %d bytes\n", dsize);
+    }
+
+    if (!check_cksum) { /* -K: the network card may compute it after capture */
+      return;
+    }
+
     /* look at the UDP checksum to make sure we've got a good packet */
 
     /*  Checksum is the 16-bit one's complement of the one's complement sum of a
@@ -131,41 +158,40 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
      * multiple of two octets. (rfc768)
      */
 
-    ph.sip = (u_int32_t)(iptr->ip_src.s_addr);
-    ph.dip = (u_int32_t)(iptr->ip_dst.s_addr);
-    ph.zero = 0;
-    ph.protocol = iptr->ip_proto;
-    ph.udplen = udptr->uh_len; 
-    
-    if(udptr->uh_chk)
+    if(!udptr->uh_chk)
       {
-	csum = in_chksum_udp((u_int16_t *)&ph, (u_int16_t *)(udptr), uhlen);
+	csum = 0; /* the sender did not compute it (allowed over IPv4 only) */
+      }
+    else if (ip6ptr != NULL)
+      {
+	/* the IPv6 pseudo header is not the same */
+	csum = in_chksum_ip6(ip6ptr, IP_PROTO_UDP, pkt, uhlen);
       }
     else
       {
-	csum = 0;
+	ph.sip = (u_int32_t)(iptr->ip_src.s_addr);
+	ph.dip = (u_int32_t)(iptr->ip_dst.s_addr);
+	ph.zero = 0;
+	ph.protocol = iptr->ip_proto;
+	ph.udplen = udptr->uh_len; 
+
+	csum = in_chksum_udp((u_int16_t *)&ph, (u_int16_t *)(udptr), uhlen);
       }
 
-    if(csum)
+    if ((ip6ptr != NULL) && (!udptr->uh_chk))
       {
-	printf( "Bad UDP Checksum\n");
+	printf("UDP checksum missing (mandatory over IPv6)\n");
+      }
+    else if(csum)
+      {
+	/* in_chksum_udp sums the words in memory order, in_chksum_ip6 in network order */
+	printf("Bad UDP checksum 0x%04x (should be 0x%04x)\n", ntohs(udptr->uh_chk),
+	       expected_cksum((ip6ptr != NULL) ? csum : ntohs(csum), ntohs(udptr->uh_chk)));
       }
     else
       {
 	printf("UDP Checksum: OK\n");
       }
-    
-
-    /* source and destination ports */
-    sp = ntohs(udptr->uh_sport);
-    dp = ntohs(udptr->uh_dport);
-
-    PrintPorts(sp,dp,UDP_COLOR);
-    
-    data = (u_int8_t *) (pkt + UDP_HEADER_LEN);
-    
-    /* length was validated up above */
-    dsize = uhlen - UDP_HEADER_LEN; 
 
     return;
 }

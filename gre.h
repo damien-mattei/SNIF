@@ -36,8 +36,20 @@ typedef struct _GREHdr
 
 } GREHdr;
 
-#define GRE_TYPE_TRANS_BRIDGING 0x6558
-#define GRE_TYPE_PPP            0x880B
+#define GRE_TYPE_IPV4           0x0800
+#define GRE_TYPE_ARP            0x0806
+#define GRE_TYPE_IPX            0x8137
+#define GRE_TYPE_IPV6           0x86DD
+#define GRE_TYPE_TRANS_BRIDGING 0x6558 /* ethernet frame */
+#define GRE_TYPE_PPP            0x880B /* PPTP */
+#define GRE_TYPE_ERSPAN_TYPE2   0x88BE /* Cisco port mirroring */
+#define GRE_TYPE_ERSPAN_TYPE3   0x22EB
+
+/* ERSPAN headers before the mirrored ethernet frame
+ * (taken from snort 2.9.20 decode.h) */
+#define ERSPAN2_HEADER_LEN      8
+#define ERSPAN3_HEADER_LEN      12
+#define ERSPAN3_PLATFORM_LEN    8  /* optional platform specific subheader */
 
 #define GRE_HEADER_LEN 4
 #define GRE_CHKSUM_LEN 2

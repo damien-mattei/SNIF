@@ -1,1 +1,6 @@
 this directory contains usefull scripts that can be used with the main program.It is not necessary for end user to run them, but they can be run by package maintainer.
+
+To update the ethernet vendor codes (var/ieee_ethercodes.dat)
+and the port numbers (var/portnumbers.dat, from the IANA registry):
+  cd var ; ../contrib/updatevar.sh                  (Wireshark manuf file, updated weekly from IEEE)
+  cd var ; ../contrib/updatevar.sh oui.csv mam.csv oui36.csv iab.csv   (official IEEE registries)

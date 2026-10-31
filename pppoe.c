@@ -40,12 +40,19 @@
 
 #include <string.h> /* added for memcpy,strncpy */
 
+#include "terminal.h" /* escape sequences for color,... */
+
+#include "color.h" /* describe color and protocols */
 
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
 #include "ethernet.h"
 #include "pppoe.h"
+
+extern int send_esc; /* send escape sequence to terminal
+		      * enable color and bold text
+		      */
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
@@ -56,14 +63,120 @@ extern int verb; /* verbose level
 		  */
 
 
+/* read a 16 bits number in network order at any alignment */
+static u_int16_t get_u16(u_int8_t * ptr)
+{
+  return (ptr[0] << 8) | ptr[1];
+}
 
 
+/*
+ * Function: DecodePPPoETags(u_int8_t *, u_int32_t)
+ *
+ * Purpose: Decode the tags of a PPPoE discovery packet (RFC 2516 appendix A)
+ *
+ * Arguments: ptr => ptr to the first tag
+ *            len => length of the tags (from the PPPoE length field)
+ *
+ * Returns: void function
+ */
+static void DecodePPPoETags(u_int8_t * ptr, u_int32_t len)
+{
+
+  u_int16_t type;   /* tag type */
+  u_int16_t tlen;   /* tag length */
+  u_int32_t i;
+
+  while (len >= PPPoE_TAG_HEADER_LEN) {
+
+    type = get_u16(ptr);
+    tlen = get_u16(ptr + 2);
+
+    if (type == PPPoE_TAG_END_OF_LIST) {
+      break;
+    }
+
+    if (PPPoE_TAG_HEADER_LEN + tlen > len) {
+      printf("  Truncated tag 0x%04X (length %d, %d bytes left)\n", type, tlen,
+	     len - PPPoE_TAG_HEADER_LEN);
+      return;
+    }
+
+    ptr += PPPoE_TAG_HEADER_LEN;
+    len -= PPPoE_TAG_HEADER_LEN;
+
+    switch (type) {
+
+    case PPPoE_TAG_SERVICE_NAME:
+    case PPPoE_TAG_AC_NAME:
+    case PPPoE_TAG_SERVICE_NAME_ERROR:
+    case PPPoE_TAG_AC_SYSTEM_ERROR:
+    case PPPoE_TAG_GENERIC_ERROR: /* UTF-8 text */
+
+      printf("  %s: ",
+	     (type == PPPoE_TAG_SERVICE_NAME) ? "Service-Name" :
+	     (type == PPPoE_TAG_AC_NAME) ? "AC-Name" :
+	     (type == PPPoE_TAG_SERVICE_NAME_ERROR) ? "Service-Name-Error" :
+	     (type == PPPoE_TAG_AC_SYSTEM_ERROR) ? "AC-System-Error" : "Generic-Error");
+
+      if ((type == PPPoE_TAG_SERVICE_NAME) && (tlen == 0)) {
+	printf("(any service)");
+      }
+      else {
+	putchar('"');
+	for (i = 0; i < tlen; i++) {
+	  /* bytes of UTF-8 characters are shown as they are */
+	  putchar(((ptr[i] >= 32) && (ptr[i] != 127)) ? ptr[i] : '.');
+	}
+	putchar('"');
+      }
+      printf("\n");
+      break;
+
+    case PPPoE_TAG_VENDOR_SPECIFIC:
+
+      if (tlen >= 4) {
+	printf("  Vendor-Specific: vendor id %u (%d bytes)\n",
+	       ((u_int32_t) ptr[0] << 24) | ((u_int32_t) ptr[1] << 16)
+	       | ((u_int32_t) ptr[2] << 8) | (u_int32_t) ptr[3], tlen - 4);
+      }
+      else {
+	printf("  Vendor-Specific: (%d bytes)\n", tlen);
+      }
+      break;
+
+    default: /* Host-Uniq, AC-Cookie, Relay-Session-Id and the unknown ones */
+
+      printf("  %s: ",
+	     (type == PPPoE_TAG_HOST_UNIQ) ? "Host-Uniq" :
+	     (type == PPPoE_TAG_AC_COOKIE) ? "AC-Cookie" :
+	     (type == PPPoE_TAG_RELAY_SESSION_ID) ? "Relay-Session-Id" : "Tag");
+
+      if ((type != PPPoE_TAG_HOST_UNIQ) && (type != PPPoE_TAG_AC_COOKIE)
+	  && (type != PPPoE_TAG_RELAY_SESSION_ID)) {
+	printf("0x%04X ", type);
+      }
+
+      printf("0x");
+      for (i = 0; (i < tlen) && (i < PPPoE_TAG_MAX_HEX); i++) {
+	printf("%02x", ptr[i]);
+      }
+      printf("%s (%d bytes)\n", (tlen > PPPoE_TAG_MAX_HEX) ? "..." : "", tlen);
+      break;
+    }
+
+    ptr += tlen;
+    len -= tlen;
+  }
+
+}
 
 
 /*
  * Function: DecodePPPoE(u_int8_t *, const u_int32_t)
  *
- * Purpose: Decode PPP over ethernet packets
+ * Purpose: Decode PPP over ethernet packets,
+ *          based on DecodePPPoEPkt of snort 2.9.20
  *
  * Arguments:
  *            pkt => ptr to the packet data
@@ -77,263 +190,80 @@ extern int verb; /* verbose level
 void DecodePPPoE(u_int8_t * pkt, const u_int32_t len)
 {
 
-    PPPoEHdr *pppoe_hdr_ptr=0;
-   
-    PPPoE_Tag *ppppoe_tag=0;
-    PPPoE_Tag tag;  /* needed to avoid alignment problems */
+    PPPoEHdr * pppoe_hdr_ptr;
 
-    EtherHdr * eptr; /*  needed to point back to ethernet header to
-		      *  know if it's a DISCOVERY or SESSION packet */
+    u_int32_t plen;   /* payload length given by the header */
+    const char * name;
 
-    int i;
-    char * buf;
-
-
-    if (dump_link_layer) { 
-
-      printf("PPP over Ethernet packet\n");
-
+    if (send_esc) {
+      SETCOLOR(DATA_LINK_LAYER_COLOR);
     }
 
-     /* do a little validation */
+    printf("PPPoE ");
+
+    /* do a little validation */
     if(len < PPPOE_HEADER_LEN)
     {
-       
        printf("Captured data length < PPPOE header length! (%d bytes)\n", len);
-               
-        return;
+       return;
     }
-
-    /* lay the ethernet structure over the packet data */
-    eptr = (EtherHdr *) pkt - ETHERNET_HEADER_LEN;
 
     pppoe_hdr_ptr = (PPPoEHdr *)pkt;
 
-    /* grab out the network type */
-    switch(ntohs(eptr->ether_type))
-    {
-        case ETHERNET_TYPE_PPPoE_DISC:
-            printf( "Discovery packet\n");
-            break;
+    plen = get_u16(pkt + 4);
 
-        case ETHERNET_TYPE_PPPoE_SESS:
-            printf( "Session packet\n");
-            break;
+    /* the code tells the stage: 0 in the session stage, not 0 in the
+     * discovery stage (the ethernet header may not be just before us,
+     * with a VLAN or a Linux cooked capture) */
+    switch(pppoe_hdr_ptr->code)
+      {
+      case PPPoE_CODE_SESS: name = "Session"; break;
+      case PPPoE_CODE_PADI: name = "Active Discovery Initiation (PADI)"; break;
+      case PPPoE_CODE_PADO: name = "Active Discovery Offer (PADO)"; break;
+      case PPPoE_CODE_PADR: name = "Active Discovery Request (PADR)"; break;
+      case PPPoE_CODE_PADS: name = "Active Discovery Session-confirmation (PADS)"; break;
+      case PPPoE_CODE_PADT: name = "Active Discovery Terminate (PADT)"; break;
+      default:              name = "unknown code"; break;
+      }
 
-        default:
-            return;
+    if (send_esc) {
+      SETATTRIB( BRIGHT );
     }
+
+    printf("%s", name);
+
+    if (send_esc) {
+      NORMALMODE();
+      SETCOLOR( DATA_LINK_LAYER_COLOR );
+    }
+
+    printf("%s0x%04X", (pppoe_hdr_ptr->code == PPPoE_CODE_SESS) ? " " : "  session ",
+	   get_u16(pkt + 2));
 
     if (verb > 0) {
-      switch(pppoe_hdr_ptr->code)
-	{
-        case PPPoE_CODE_PADI:
-	  /* The Host sends the PADI packet with the DESTINATION_ADDR set 
-	   * to the broadcast address.  The CODE field is set to 0x09 and
-	   * the SESSION_ID MUST be set to 0x0000.
-	   *
-	   * The PADI packet MUST contain exactly one TAG of TAG_TYPE 
-	   * Service-Name, indicating the service the Host is requesting, 
-	   * and any number of other TAG types.  An entire PADI packet 
-	   * (including the PPPoE header) MUST NOT exceed 1484 octets so 
-	   * as to leave sufficient room for a relay agent to add a 
-	   * Relay-Session-Id TAG.
-	   */ 
-	  printf("Active Discovery Initiation (PADI)\n");
-	  break;
-
-        case PPPoE_CODE_PADO:
-	  /* When the Access Concentrator receives a PADI that it can 
-	   * serve, it replies by sending a PADO packet.  The 
-	   * DESTINATION_ADDR is the unicast address of the Host that 
-	   * sent the PADI.  The CODE field is set to 0x07 and the 
-	   * SESSION_ID MUST be set to 0x0000.  
-	   * 
-	   * The PADO packet MUST contain one AC-Name TAG containing the 
-	   * Access Concentrator's name, a Service-Name TAG identical to 
-	   * the one in the PADI, and any number of other Service-Name 
-	   * TAGs indicating other services that the Access Concentrator 
-	   * offers.  If the Access Concentrator can not serve the PADI 
-	   * it MUST NOT respond with a PADO.
-	   */ 
-	  printf("Active Discovery Offer (PADO)\n");
-	  break;
-
-        case PPPoE_CODE_PADR:
-	  /* Since the PADI was broadcast, the Host may receive more than 
-	   * one PADO.  The Host looks through the PADO packets it receives 
-	   * and chooses one.  The choice can be based on the AC-Name or 
-	   * the Services offered.  The Host then sends one PADR packet 
-	   * to the Access Concentrator that it has chosen.  The 
-	   * DESTINATION_ADDR field is set to the unicast Ethernet address 
-	   * of the Access Concentrator that sent the PADO.  The CODE 
-	   * field is set to 0x19 and the SESSION_ID MUST be set to 0x0000.
-	   *
-	   * The PADR packet MUST contain exactly one TAG of TAG_TYPE 
-	   * Service-Name, indicating the service the Host is requesting, 
-	   * and any number of other TAG types.
-	   */ 
-	  printf("Active Discovery Request (PADR)\n");
-	  break;
-
-        case PPPoE_CODE_PADS:
-	  /* When the Access Concentrator receives a PADR packet, it 
-	   * prepares to begin a PPP session.  It generates a unique 
-	   * SESSION_ID for the PPPoE session and replies to the Host with 
-	   * a PADS packet.  The DESTINATION_ADDR field is the unicast 
-	   * Ethernet address of the Host that sent the PADR.  The CODE 
-	   * field is set to 0x65 and the SESSION_ID MUST be set to the 
-	   * unique value generated for this PPPoE session.
-	   *
-	   * The PADS packet contains exactly one TAG of TAG_TYPE 
-	   * Service-Name, indicating the service under which Access 
-	   * Concentrator has accepted the PPPoE session, and any number 
-	   * of other TAG types.
-	   *
-	   * If the Access Concentrator does not like the Service-Name in 
-	   * the PADR, then it MUST reply with a PADS containing a TAG of 
-	   * TAG_TYPE Service-Name-Error (and any number of other TAG 
-	   * types).  In this case the SESSION_ID MUST be set to 0x0000.
-	   */ 
-	  printf("Active Discovery Session-confirmation (PADS)\n");
-	  break;
-
-        case PPPoE_CODE_PADT:
-	  /* This packet may be sent anytime after a session is established 
-	   * to indicate that a PPPoE session has been terminated.  It may 
-	   * be sent by either the Host or the Access Concentrator.  The 
-	   * DESTINATION_ADDR field is a unicast Ethernet address, the 
-	   * CODE field is set to 0xa7 and the SESSION_ID MUST be set to 
-	   * indicate which session is to be terminated.  No TAGs are 
-	   * required.  
-	   *
-	   * When a PADT is received, no further PPP traffic is allowed to 
-	   * be sent using that session.  Even normal PPP termination 
-	   * packets MUST NOT be sent after sending or receiving a PADT.  
-	   * A PPP peer SHOULD use the PPP protocol itself to bring down a 
-	   * PPPoE session, but the PADT MAY be used when PPP can not be 
-	   * used.
-	   */ 
-	  printf("Active Discovery Terminate (PADT)\n");
-	  break;
-
-        case PPPoE_CODE_SESS: 
-	  printf("Session Packet (SESS)\n");
-	  break;
-
-        default:
-	  printf("(Unknown code)\n");
-	  break;
-	}
+      printf("  code 0x%02X  length %d", pppoe_hdr_ptr->code, plen);
     }
 
-    if (ntohs(eptr->ether_type) != ETHERNET_TYPE_PPPoE_DISC) /* it's a SESSion ! */
-    {
-        DecodePppPktEncapsulated( pkt + PPPOE_HEADER_LEN,len - PPPOE_HEADER_LEN);
-        return;
+    printf("\n");
+
+    if (pppoe_hdr_ptr->ver_type != PPPoE_VER_TYPE) {
+      printf("Unknown PPPoE version/type 0x%02X\n", pppoe_hdr_ptr->ver_type);
+      return;
     }
-    /* else */
-/*     { */
-/*         printf("Returning early on PPPOE discovery packet\n"); */
-/*         return; */
-/*     } */
 
-
-    ppppoe_tag = (PPPoE_Tag *)(pkt + sizeof(PPPoEHdr));
-
-    while (ppppoe_tag < (PPPoE_Tag *)(pkt + len))
-    {
-      if (((char*)(ppppoe_tag)+(sizeof(PPPoE_Tag)-1)) > (char*)(pkt + len))
-        {
-	  printf( "Not enough data in packet for PPPOE Tag\n");
-	  break;
-        }
-
-      
-        /* no guarantee in PPPoE spec that ppppoe_tag is aligned at all... */
-        memcpy(&tag, ppppoe_tag, sizeof(tag));
-
-        printf("\tPPPoE tag:\ntype: %04x length: %04x ", 
-	       ntohs(tag.type), ntohs(tag.length));
-
-	if (verb > 0) {
-
-        switch(ntohs(tag.type))
-        {
-            case PPPoE_TAG_END_OF_LIST:
-                printf( "(End of list)\n\t");
-                break;
-            case PPPoE_TAG_SERVICE_NAME:
-                printf( "(Service name)\n\t");
-                break;
-            case PPPoE_TAG_AC_NAME:
-                printf( "(AC Name)\n\t");
-                break;
-            case PPPoE_TAG_HOST_UNIQ:
-                printf( "(Host Uniq)\n\t");
-                break;
-            case PPPoE_TAG_AC_COOKIE:
-                printf( "(AC Cookie)\n\t");
-                break;
-            case PPPoE_TAG_VENDOR_SPECIFIC:
-                printf( "(Vendor Specific)\n\t");
-                break;
-            case PPPoE_TAG_RELAY_SESSION_ID:
-                printf( "(Relay Session ID)\n\t");
-                break;
-            case PPPoE_TAG_SERVICE_NAME_ERROR:
-                printf( "(Service Name Error)\n\t");
-                break;
-            case PPPoE_TAG_AC_SYSTEM_ERROR:
-                printf( "(AC System Error)\n\t");
-                break;
-            case PPPoE_TAG_GENERIC_ERROR:
-                printf( "(Generic Error)\n\t");
-                break;
-            default:
-                printf( "(Unknown)\n\t");
-                break;
-        }
-
-
-        if (ntohs(tag.length) > 0)
-        {
-
-            switch (ntohs(tag.type))
-            {
-                case PPPoE_TAG_SERVICE_NAME:
-                case PPPoE_TAG_AC_NAME:
-                case PPPoE_TAG_SERVICE_NAME_ERROR:
-                case PPPoE_TAG_AC_SYSTEM_ERROR:
-                case PPPoE_TAG_GENERIC_ERROR: /* ascii data */
-                    buf = (char *) calloc(ntohs(tag.length) + 1, sizeof(char));
-                    strncpy(buf, (char *)(ppppoe_tag+1), ntohs(tag.length));
-                    printf( "data (UTF-8): %s\n", buf);
-                    free(buf);
-                    break;
-
-                case PPPoE_TAG_HOST_UNIQ:
-                case PPPoE_TAG_AC_COOKIE:
-                case PPPoE_TAG_RELAY_SESSION_ID:
-                    printf( "data (bin): ");
-                    for (i = 0; i < ntohs(tag.length); i++)
-                        printf(
-                                "%02x", *(((unsigned char *)ppppoe_tag) + 
-                                    sizeof(PPPoE_Tag) + i));
-                    printf( "\n");
-                    break;
-
-                default:
-                    printf( "unrecognized data\n");
-                    break;
-            }
-
-        }
-
-	}
-
-        ppppoe_tag = (PPPoE_Tag *)((char *)(ppppoe_tag+1)+ntohs(tag.length));
+    if (plen > len - PPPOE_HEADER_LEN) {
+      printf("PPPoE length field is %d bytes bigger than captured length.\n",
+	     plen - (len - PPPOE_HEADER_LEN));
+      plen = len - PPPOE_HEADER_LEN;
     }
+
+    if (pppoe_hdr_ptr->code == PPPoE_CODE_SESS) {
+      /* the length field removes the ethernet padding */
+      DecodePppPktEncapsulated(pkt + PPPOE_HEADER_LEN, plen);
+      return;
+    }
+
+    DecodePPPoETags(pkt + PPPOE_HEADER_LEN, plen);
 
     return;
 }

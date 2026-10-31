@@ -55,92 +55,145 @@ extern int send_esc; /* send escape sequence to terminal
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
-/* Decode Vlan traffic*/
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
+
+/* names of the priority code points (IEEE 802.1Q table I-2) */
+static const char * vlan_priority[] = {
+  "best effort", "background", "excellent effort", "critical applications",
+  "video", "voice", "internetwork control", "network control"
+};
+
+
+/*
+ * Function: DecodeVlan(u_int8_t *, const u_int32_t, struct pcap_pkthdr *)
+ *
+ * Purpose: Decode Vlan traffic (802.1Q tag, and 802.1ad service tag
+ *          of the stacked VLAN "QinQ")
+ *
+ * Arguments: pkt => ptr to the tag control information
+ *            len => length from here to the end of the packet
+ *            pkthdr => ptr to the packet header (not used, can be NULL)
+ *
+ * Returns: void function
+ */
 void DecodeVlan(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr) 
 {
 
   VlanTagHdr * vlan_hdr_ptr;
 
+  u_int16_t proto;      /* type of the encapsulated packet */
+  u_int8_t * payload;   /* encapsulated packet */
+  u_int32_t plen;       /* length of the encapsulated packet */
+
   if (send_esc) {
-    SETCOLOR(NETWORK_LAYER_COLOR);
-   }
+    SETCOLOR(DATA_LINK_LAYER_COLOR);
+  }
 
-
-    if(len < sizeof(VlanTagHdr))
+  if(len < sizeof(VlanTagHdr))
     {
-        printf("Not enough data to process a Vlan header\n");
-
-        printf("Dropping bad packet\n");
-             
-        return;
+      printf("VLAN\n");
+      printf("Not enough data to process a Vlan header\n");
+      printf("Dropping bad packet\n");
+      return;
     }
 
-    vlan_hdr_ptr = (VlanTagHdr *) pkt;
+  vlan_hdr_ptr = (VlanTagHdr *) pkt;
+  proto = ntohs(vlan_hdr_ptr->vth_proto);
 
-     if (dump_link_layer) { 
-       SETATTRIB( BRIGHT );
-       printf("Vlan traffic:\n");
-       NORMALMODE();
-       SETCOLOR(NETWORK_LAYER_COLOR);
-       printf("   Priority: %d(0x%X)\n", 
-                            VTH_PRIORITY(vlan_hdr_ptr), VTH_PRIORITY(vlan_hdr_ptr));
-       printf("   CFI: %d\n", VTH_CFI(vlan_hdr_ptr));
-       printf("   Vlan ID: %d(0x%04X)\n", 
-                            VTH_VLAN(vlan_hdr_ptr), VTH_VLAN(vlan_hdr_ptr));
-       printf("   Vlan Proto: 0x%04X\n", 
-                            ntohs(vlan_hdr_ptr->vth_proto));
-     }
+  if (dump_link_layer) { 
 
+    printf("VLAN ");
 
-    /* check to see if we've got an encapsulated LLC layer
-     * http://www.geocities.com/billalexander/ethernet.html
-     */
-    if(ntohs(vlan_hdr_ptr->vth_proto) <= ETHERNET_MAX_LEN_ENCAP)
-      /* sound strange : proto can't be compared with a length ! */
+    if (send_esc) {
+      SETATTRIB( BRIGHT );
+    }
+
+    printf("%d", VTH_VLAN(vlan_hdr_ptr));
+
+    if (send_esc) {
+      NORMALMODE();
+      SETCOLOR( DATA_LINK_LAYER_COLOR );
+    }
+
+    printf("  priority %d (%s)%s", VTH_PRIORITY(vlan_hdr_ptr),
+	   vlan_priority[VTH_PRIORITY(vlan_hdr_ptr)],
+	   VTH_CFI(vlan_hdr_ptr) ? "  drop eligible" : "");
+
+    if (verb > 0) {
+      printf("  type 0x%04X", proto);
+    }
+
+    printf("\n");
+  }
+
+  payload = pkt + sizeof(VlanTagHdr);
+  plen = len - sizeof(VlanTagHdr);
+
+  /* check to see if we've got an encapsulated LLC layer:
+   * as in ethernet, a value up to 1518 is the length of an 802.3 frame */
+  if(proto <= ETHERNET_MAX_LEN_ENCAP)
     {
-        if(len < sizeof(VlanTagHdr) + sizeof(LLCHdr))
+      if (proto < plen) { /* remove the padding */
+	plen = proto;
+      }
 
+      if ((plen >= 2) && (payload[0] == 0xff) && (payload[1] == 0xff)) {
+	DecodeIPX(payload, plen); /* "raw" 802.3 of Novell */
+	return;
+      }
 
+      if(plen < sizeof(LLCHdr))
         {
-           printf("Not enough data for Vlan + LLC header\n");
-        
-	   printf("Dropping bad packet\n");
-	   
-	   return;            
+	  printf("Not enough data for Vlan + LLC header\n");
+	  printf("Dropping bad packet\n");
+	  return;            
         }
         
-	/* assuming we have an LLC header */
-        DecodeLLC (pkt + sizeof(VlanTagHdr), len - sizeof(VlanTagHdr),pkthdr);
-
+      /* assuming we have an LLC header */
+      DecodeLLC(payload, plen, pkthdr);
+      return;
     }
-    else
-      {
-        switch(ntohs(vlan_hdr_ptr->vth_proto))
-	  {
-	  case ETHERNET_TYPE_IP:
-	    DecodeIP(pkt + sizeof(VlanTagHdr), 
-		     len - sizeof(VlanTagHdr));
-	    return;
-	    
-	  case ETHERNET_TYPE_ARP:
-	    DecodeARP();
-	    return;
-	    
-	  case ETHERNET_TYPE_REVARP:
-	    DecodeReverseARP();   
-	    return;
-	    
-	  case ETHERNET_TYPE_IPV6:
-	    DecodeIPV6(pkt + sizeof(VlanTagHdr), 
-		       len - sizeof(VlanTagHdr)
-		       ,pkthdr);
-	    return;
 
-	  default:
-	    printf( "Unknown network protocol: code %d\n",
-		    ntohs(vlan_hdr_ptr->vth_proto));
-	    return;
-	  }
-      }
+  switch(proto)
+    {
+    case ETHERNET_TYPE_IP:
+      DecodeIP(payload, plen);
+      return;
+	    
+    case ETHERNET_TYPE_ARP:
+    case ETHERNET_TYPE_REVARP:
+      DecodeARP(payload, plen);
+      return;
+	    
+    case ETHERNET_TYPE_IPV6:
+      DecodeIPV6(payload, plen, pkthdr);
+      return;
+
+    case ETHERNET_TYPE_IPX:
+      DecodeIPX(payload, plen);
+      return;
+
+    case ETHERNET_TYPE_PPPoE_DISC:
+    case ETHERNET_TYPE_PPPoE_SESS:
+      DecodePPPoE(payload, plen);
+      return;
+
+    case ETHERNET_TYPE_EAPOL:
+      DecodeEapol(payload, plen);
+      return;
+
+    case ETHERNET_TYPE_8021Q: /* stacked VLAN: the customer tag follows */
+    case ETHERNET_TYPE_8021AD:
+    case ETHERNET_TYPE_QINQ_OLD:
+      DecodeVlan(payload, plen, pkthdr);
+      return;
+
+    default:
+      printf( "Unknown network protocol: code %d\n", proto);
+      return;
+    }
 }
-

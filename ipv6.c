@@ -32,7 +32,12 @@
 
 #include <pcap.h>
 
+#include <string.h>
+
 #include <netinet/in.h>
+
+#include <sys/socket.h>
+#include <arpa/inet.h> /* inet_ntop */
 
 #include <search.h> /* added for hash tables */
 
@@ -43,279 +48,437 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
-#include "sfutil/sfxhash.h" /* source fire utilities */
-
 #include "ipv6.h"
 
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
 
-SFXHASH *ipv6_frag_hash;
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
 
+extern int resolv_ip; /* resolve or not IP address in hostname */
 
-void BsdFragHashCleanup(void)
+/*
+ * Function: PrintIP6Addr(u_int8_t *, char)
+ *
+ * Purpose: print an IPv6 address in bright and resolve it
+ *          in hostname if asked
+ *
+ * Arguments: addr => ptr to the 16 bytes of the address
+ *            color => color to restore after the address
+ *
+ * Returns: void function
+ */
+void PrintIP6Addr(u_int8_t * addr, char color)
 {
-    if (ipv6_frag_hash)
-    {
-        sfxhash_delete(ipv6_frag_hash);
-        ipv6_frag_hash = NULL;
-    }
-}
 
-void BsdFragHashReset(void)
-{
-    if (ipv6_frag_hash != NULL)
-        sfxhash_make_empty(ipv6_frag_hash);
-}
+  struct in6_addr a; /* aligned copy of the address */
+  char str[INET6_ADDRSTRLEN];
 
-void BsdFragHashInit(int max)
-{
-    int rows = sfxhash_calcrows((int) (max * 1.4));
+  memcpy(&a, addr, sizeof(a));
+  inet_ntop(AF_INET6, &a, str, sizeof(str));
 
-    ipv6_frag_hash = sfxhash_new( 
-            /* one row per element in table, when possible */
-            rows,
-            36,      /* key size :  padded with zeros */
-            4,       /* data size:  padded with zeros */
-            /* Set max to the sizeof a hash node, plus the size of 
-             * the stored data, plus the size of the key (32), plus
-             * this size of a node pointer plus max rows plus 1. */
-            max * (36 + sizeof(SFXHASH_NODE) + sizeof(u_int32_t) + sizeof(SFXHASH_NODE*)) 
-                + (rows+1) * sizeof(SFXHASH_NODE*),   
-            1,       /* enable AutoNodeRecovery */
-            NULL, /* provide a function to let user know we want to kill a node */
-            NULL, /* provide a function to release user memory */
-            1);      /* Recycle nodes */
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
 
-    if (!ipv6_frag_hash) {
-        fprintf(stderr,"could not allocate ipv6_frag_hash");
-	CleanExit(1);
-    }
-}
+  printf("%s", str);
 
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( color );
+  }
 
+  if (resolv_ip) {
+    printResolvedIP6(&a);
+  }
 
-int CheckIPV6Frag (char *data, u_int32_t size, struct pcap_pkthdr * pkthdr)
-{
-    typedef struct _IP6HdrChain
-    {
-        u_int8_t        next_header;
-        u_int8_t        length;
-    } IP6HdrChain;
-
-    IP6RawHdr *hdr;
-    IP6Frag  *frag;
-    IP6HdrChain *chain;
-    u_int8_t next_header;
-    u_int32_t offset;
-    unsigned int header_length;
-    unsigned short frag_data;
-    char key[36]; /* Two 16 bit IP addresses and one fragmentation ID */
-    SFXHASH_NODE *hash_node;
-
-    /* This is the default timeout on BSD */
-    int ipv6_frag_timeout = 60;
-
-    if (sizeof(IP6RawHdr) > size)
-        return IPV6_TRUNCATED;
-
-    hdr = (IP6RawHdr *) data;
-
-    if (((hdr->ip6vfc & 0xf0) >> 4) != 6) 
-        return IPV6_IS_NOT;
-
-    if (sizeof(IP6RawHdr) + ntohs(hdr->ip6plen) > size)
-        return IPV6_TRUNCATED;
-
-    next_header = hdr->ip6nxt;
-    offset = sizeof(IP6RawHdr);
-
-    while (offset < size)
-    {
-        switch (next_header) {
-            case IP_PROTO_IPV6:
-                return CheckIPV6Frag(data + offset, size - offset, pkthdr);
-            case IP_PROTO_HOPOPTS:
-            case IP_PROTO_ROUTING:
-            case IP_PROTO_AH:
-            case IP_PROTO_DSTOPTS:
-                if (sizeof(IP6HdrChain) + offset > size)
-                    return IPV6_TRUNCATED_EXT;
-
-                chain = (IP6HdrChain* ) (data + offset);
-
-                next_header     = chain->next_header;
-                header_length   = 8 + (8 * chain->length);
-
-                if (offset + header_length > size)
-                    return IPV6_TRUNCATED_EXT;
-
-                offset += header_length;
-                break;
-
-            case IP_PROTO_FRAGMENT:
-                if (offset + sizeof(IP6Frag) > size)
-                    return IPV6_TRUNCATED_EXT;
-
-                frag = (IP6Frag *) (data + offset); 
-                frag_data = frag->ip6f_offlg;
-
-                /* srcip / dstip */
-                memcpy(key, (data + 8), 32);
-                *(u_int32_t*)(key+32) = frag->ip6f_ident;
-
-                hash_node = sfxhash_find_node(ipv6_frag_hash, key);
-
-                /* Check if the frag offset mask is set. 
-                 * If it is, we're not looking at the exploit in question */
-                if(frag_data & IP6F_OFF_MASK)
-                {
-                    /* If this arrives before the two 0 offset frags, we will
-                     * still add them as though they were the first, and false
-                     * positive */
-                    if(hash_node) sfxhash_free_node(ipv6_frag_hash, hash_node);
-                    return IPV6_FRAG_NO_ALERT;
-                }
-
-                /* Check if there are no more frags */
-                if(!(frag_data & IP6F_MORE_FRAG))
-                {
-                    /* At this point, we've seen a frag header with no offset 
-                     * that doesn't have the more flags set.  Need to see if 
-                     * this follows a packet that did have the more flag set. */
-                    if(hash_node)
-                    {
-                        /* Check if the first packet timed out */
-                        if( (pkthdr->ts.tv_sec - *(u_int32_t*)hash_node->data)
-                             > ipv6_frag_timeout ) 
-                        {
-                            sfxhash_free_node(ipv6_frag_hash, hash_node);
-                            return IPV6_FRAG_BAD_PKT;
-                        }
-
-                        if(size - offset > 100)
-                        {
-                            return IPV6_FRAG_ALERT;
-                        }
-
-                        sfxhash_free_node(ipv6_frag_hash, hash_node);
-                         
-                        return IPV6_FRAG_BAD_PKT;
-                    }
-                
-                    /* We never saw the first packet, but this one is still bogus */
-                    return IPV6_FRAG_BAD_PKT;
-                }
-                
-                /* At this point, we've seen a header with no offset and a 
-                 * more flag */
-                if(!hash_node) 
-                {
-                    /* There are more frags remaining, add current to hash */
-                    if(sfxhash_add(ipv6_frag_hash, key, (void *)&pkthdr->ts.tv_sec) 
-                        == SFXHASH_NOMEM)
-                    {
-                        return -1;
-                    }
-                }
-                else
-                {
-                    /* Update this node's timestamp */
-                    *(u_int32_t*)hash_node->data = pkthdr->ts.tv_sec;
-                }
-
-            default:
-                return IPV6_FRAG_NO_ALERT;
-        }
-    }
-
-    return IPV6_FRAG_NO_ALERT;
 }
 
 
+/* read a 32 bits number in network order at any alignment */
+static u_int32_t get_u32(u_int8_t * ptr)
+{
+  u_int32_t val;
+
+  memcpy(&val, ptr, sizeof(val));
+
+  return ntohl(val);
+}
 
 
 /*
- * Function: DecodeIPV6(u_int8_t *, u_int32_t)
+ * Function: DecodeIP6Options(u_int8_t *, u_int32_t)
  *
- * Purpose: IP Version 6 (not yet implemented)
+ * Purpose: decode the options of a Hop-by-Hop
+ *          or Destination Options header (verbose mode)
+ *
+ * Arguments: ptr => ptr to the first option
+ *            len => length of the options
+ *
+ * Returns: void function
+ */
+static void DecodeIP6Options(u_int8_t * ptr, u_int32_t len)
+{
+
+  u_int32_t i = 0;
+  u_int8_t type;  /* option type */
+  u_int8_t olen;  /* option data length */
+
+  while (i < len) {
+
+    type = ptr[i];
+
+    if (type == IP6OPT_PAD1) { /* a single byte without length */
+      i++;
+      continue;
+    }
+
+    if ((i + 2 > len) || (i + 2 + ptr[i+1] > len)) {
+      printf("  Truncated option 0x%02X\n", type);
+      return;
+    }
+
+    olen = ptr[i+1];
+
+    switch (type) {
+
+    case IP6OPT_PADN:
+      break;
+
+    case IP6OPT_ROUTER_ALERT:
+      if (olen == 2) {
+	u_int16_t value = (ptr[i+2] << 8) | ptr[i+3];
+	printf("  Router Alert: %s (%d)\n",
+	       (value == 0) ? "Multicast Listener Discovery" :
+	       (value == 1) ? "RSVP" :
+	       (value == 2) ? "Active Networks" : "unknown", value);
+      }
+      break;
+
+    case IP6OPT_JUMBO:
+      if (olen == 4) {
+	printf("  Jumbo Payload length: %u\n", get_u32(ptr + i + 2));
+      }
+      break;
+
+    case IP6OPT_TUNNEL_LIMIT:
+      if (olen == 1) {
+	printf("  Tunnel Encapsulation Limit: %d\n", ptr[i+2]);
+      }
+      break;
+
+    default:
+      printf("  Option 0x%02X length %d\n", type, olen);
+      break;
+    }
+
+    i += 2 + olen;
+  }
+
+}
+
+
+/*
+ * Function: DecodeIP6Ext(u_int8_t, u_int8_t *, u_int32_t, u_int8_t *)
+ *
+ * Purpose: decode one IPv6 extension header,
+ *          based on DecodeIPV6Extensions of snort 2.9.20
+ *
+ * Arguments: type => type of the extension header (next header value)
+ *            ptr => ptr to the extension header
+ *            len => length from here to the end of the datagram
+ *            next => where to store the next header value
+ *
+ * Returns: the length of the extension header,
+ *          0 if the decoding must stop here
+ */
+static u_int32_t DecodeIP6Ext(u_int8_t type, u_int8_t * ptr, u_int32_t len, u_int8_t * next)
+{
+
+  u_int32_t hlen; /* extension header length */
+
+  switch (type) {
+
+  case IP_PROTO_HOPOPTS:
+  case IP_PROTO_DSTOPTS:
+
+    if ((len < sizeof(IP6Ext)) || (len < (u_int32_t)(ptr[1] + 1) * 8)) {
+      printf("Truncated %s header (%d bytes)\n",
+	     (type == IP_PROTO_HOPOPTS) ? "Hop-by-Hop Options" : "Destination Options", len);
+      return 0;
+    }
+
+    hlen = (ptr[1] + 1) * 8;
+
+    printf("%s header\n",
+	   (type == IP_PROTO_HOPOPTS) ? "Hop-by-Hop Options" : "Destination Options");
+
+    if (verb > 0) {
+      DecodeIP6Options(ptr + 2, hlen - 2);
+    }
+
+    *next = ptr[0];
+    return hlen;
+
+  case IP_PROTO_ROUTING: {
+
+    IP6Route * route = (IP6Route *) ptr;
+
+    if ((len < sizeof(IP6Route)) || (len < (u_int32_t)(ptr[1] + 1) * 8)) {
+      printf("Truncated Routing header (%d bytes)\n", len);
+      return 0;
+    }
+
+    hlen = (route->ip6r_len + 1) * 8;
+
+    printf("Routing header type %d (%s), %d segments left\n",
+	   route->ip6r_type,
+	   (route->ip6r_type == 0) ? "Source Route, deprecated" :
+	   (route->ip6r_type == 2) ? "Mobile IPv6" :
+	   (route->ip6r_type == 3) ? "RPL Source Route" :
+	   (route->ip6r_type == 4) ? "Segment Routing" : "unknown",
+	   route->ip6r_segleft);
+
+    /* type 0, 2 and 4 carry a list of IPv6 addresses after 8 bytes */
+    if ((verb > 0) && ((route->ip6r_type == 0) || (route->ip6r_type == 2)
+		       || (route->ip6r_type == 4))) {
+      u_int32_t a;
+      for (a = 8; a + 16 <= hlen; a += 16) {
+	printf("  ");
+	PrintIP6Addr(ptr + a, IP_COLOR);
+	printf("\n");
+      }
+    }
+
+    *next = route->ip6r_nxt;
+    return hlen;
+  }
+
+  case IP_PROTO_FRAGMENT: {
+
+    IP6Frag * frag = (IP6Frag *) ptr;
+    u_int16_t offlg;  /* offset and flags */
+    u_int16_t offset; /* fragment offset in bytes */
+    u_int32_t ident;  /* identification */
+
+    if (len < sizeof(IP6Frag)) {
+      printf("Truncated Fragment header (%d bytes)\n", len);
+      return 0;
+    }
+
+    offlg = ntohs(frag->ip6f_offlg);
+    offset = offlg & 0xFFF8; /* 13 bits in 8 bytes units */
+    ident = get_u32(ptr + 4);
+
+    if (offlg & 1) { /* more fragments */
+      if (offset) {
+	printf("Fragment Offset: %d (ID 0x%08X)\n", offset, ident);
+      }
+      else {
+	printf("First Fragment of Datagram (ID 0x%08X)\n", ident);
+      }
+    }
+    else {
+      if (offset) {
+	printf("Last Fragment (Offset: %d, ID 0x%08X)\n", offset, ident);
+      }
+      else { /* RFC 6946 */
+	printf("Atomic Fragment (ID 0x%08X)\n", ident);
+      }
+    }
+
+    if (offset) {
+      printf("Upper layer header not in this fragment\n");
+      return 0;
+    }
+
+    *next = frag->ip6f_nxt;
+    return sizeof(IP6Frag);
+  }
+
+  case IP_PROTO_AH:
+
+    if ((len < 12) || (len < (u_int32_t)(ptr[1] + 2) * 4)) {
+      printf("Truncated Authentication Header (%d bytes)\n", len);
+      return 0;
+    }
+
+    hlen = (ptr[1] + 2) * 4;
+
+    printf("Authentication Header SPI: 0x%08X Seq: %u\n",
+	   get_u32(ptr + 4), get_u32(ptr + 8));
+
+    *next = ptr[0];
+    return hlen;
+
+  case IP_PROTO_ESP:
+
+    if (len < 8) {
+      printf("Truncated Encapsulating Security Payload (%d bytes)\n", len);
+      return 0;
+    }
+
+    printf("Encapsulating Security Payload SPI: 0x%08X Seq: %u (encrypted payload)\n",
+	   get_u32(ptr), get_u32(ptr + 4));
+    return 0;
+
+  case IP_PROTO_NONE:
+
+    printf("No next header\n");
+    return 0;
+
+  default:
+    return 0;
+  }
+
+}
+
+
+/*
+ * Function: DecodeIPV6(u_int8_t *, u_int32_t, struct pcap_pkthdr *)
+ *
+ * Purpose: Decode the IP Version 6 network layer (RFC 8200),
+ *          based on DecodeIPV6 of snort 2.9.20
  *
  * Arguments: pkt => ptr to the packet data
  *            len => length from here to the end of the packet
  *            pkthdr => pointer to the packet capture packet header
+ *                      (not used, can be NULL)
  *
  * Returns: void function
  */
 void DecodeIPV6(u_int8_t *pkt, u_int32_t len,struct pcap_pkthdr * pkthdr)
 {
 
-  //struct ip6_hdr *ip6h;
-  
   IP6RawHdr *hdr; 
 
-  int alert_status = CheckIPV6Frag((char *) pkt, len,pkthdr);
+  u_int32_t plen;    /* payload length (after the IPv6 header) */
+  u_int32_t flow;    /* version, traffic class and flow label */
+  u_int32_t offset;  /* offset of the current header in the datagram */
+  u_int32_t end;     /* end of the datagram */
+  u_int32_t hlen;    /* length of an extension header */
+  u_int8_t nxt;      /* next header */
+  int n_ext;         /* number of extension headers */
 
-   if (send_esc) {
+  if (send_esc) {
     SETCOLOR(IP_COLOR);
   }
-   
-   printf("IP version 6\n");
 
-   if(alert_status != IPV6_FRAG_NO_ALERT)
-    {    
-      switch (alert_status) {
-      
-      case IPV6_FRAG_ALERT:
+  /* checking the length */
+  if (len < IP6_HDR_LEN) {
+    printf("IPv6 header truncated! (%d bytes)\n", len);
+    printf("minimum IPv6 header should be %d bytes length\n", IP6_HDR_LEN);
+    return;
+  }
 
-	printf("Fragmentation problem\n");
-	break;
+  hdr = (IP6RawHdr*)pkt;
 
-      case IPV6_FRAG_BAD_PKT:
-	printf("Fragmentation problem,bad packet!\n");
-	break;
+  /* Verify version in IP6 Header agrees */
+  if ((hdr->ip6vfc >> 4) != 6) {
+    printf("Not IPv6 datagram! ([ver: 0x%x])\n", hdr->ip6vfc >> 4);
+    return;
+  }
 
-      case IPV6_IS_NOT:
-	printf("not IP Version 6!\n");
-	break;
+  plen = ntohs(hdr->ip6plen);
 
-      case IPV6_TRUNCATED_EXT:
-	printf("Extension Truncated\n");
-	break;
+  if ((plen == 0) && (hdr->ip6nxt == IP_PROTO_HOPOPTS)) {
+    /* jumbogram (RFC 2675): the length is in a Hop-by-Hop option */
+    plen = len - IP6_HDR_LEN;
+  }
 
-	case IPV6_TRUNCATED:
-	printf("Truncated packet\n");
-	break;
-	
-      default:
-	break;
+  if (plen + IP6_HDR_LEN != len) {
+    if (plen + IP6_HDR_LEN > len) {
+      printf("IPv6 Len field is %d bytes bigger than captured length.\n   (ip6.len: %d, cap.len: %d)\n",
+	     plen + IP6_HDR_LEN - len, plen + IP6_HDR_LEN, len);
+      plen = len - IP6_HDR_LEN;
+    }
+    else if (verb > 0) { /* usually the padding of a short frame */
+      printf("IPv6 Len field is %d bytes smaller than captured length.\n    (ip6.len: %d, cap.len: %d)\n",
+	     len - plen - IP6_HDR_LEN, plen + IP6_HDR_LEN, len);
+    }
+  }
 
-      }
+  printf("IPv6 ");
+  PrintIP6Addr((u_int8_t *) &(hdr->ip6_src), IP_COLOR);
+  printf(" > ");
+  PrintIP6Addr((u_int8_t *) &(hdr->ip6_dst), IP_COLOR);
+  printf("\n");
 
-      printf("Dropping bad packet\n");
+  if (verb > 0) {
+    flow = ntohl(hdr->ip6flow);
+    printf("Traffic class: 0x%02X (", (flow >> 20) & 0xFF);
+    PrintTOS((flow >> 20) & 0xFF);
+    printf(")   Flow label: 0x%05X\n", flow & 0xFFFFF);
+    printf("Payload length: %d   Next header: %d   Hop limit: %d\n",
+	   ntohs(hdr->ip6plen), hdr->ip6nxt, hdr->ip6hlim);
+  }
+
+  /* follow the chain of extension headers */
+  nxt = hdr->ip6nxt;
+  offset = IP6_HDR_LEN;
+  end = IP6_HDR_LEN + plen;
+
+  for (n_ext = 0; ; n_ext++) {
+
+    if ((nxt != IP_PROTO_HOPOPTS) && (nxt != IP_PROTO_DSTOPTS)
+	&& (nxt != IP_PROTO_ROUTING) && (nxt != IP_PROTO_FRAGMENT)
+	&& (nxt != IP_PROTO_AH) && (nxt != IP_PROTO_ESP)
+	&& (nxt != IP_PROTO_NONE)) {
+      break; /* upper layer reached */
+    }
+
+    if (n_ext >= IP6_MAX_EXT_HDRS) {
+      printf("Too many extension headers (more than %d)\n", IP6_MAX_EXT_HDRS);
       return;
-    
-    }
-   
-
-
-   /* checking the length */
-   if(len < IP6_HDR_LEN) {
-     
-     printf("IP6 header truncated! (%d bytes)\n", len);
-     
-   }
-
-   hdr = (IP6RawHdr*)pkt;
-
-   /* Verify version in IP6 Header agrees */
-    if((hdr->ip6vfc >> 4) != 6) {
-      
-      printf("Not IPv6 datagram! ([ver: 0x%x][len: 0x%x])\n", 
-	     (hdr->ip6vfc >> 4), hdr->ip6plen + IP6_HDR_LEN);
     }
 
-   // continu decoding IP V6 with snort 2.8 decode.c 
+    hlen = DecodeIP6Ext(nxt, pkt + offset, end - offset, &nxt);
 
-   return;
+    if (hlen == 0) { /* nothing more to decode */
+      return;
+    }
+
+    offset += hlen;
+  }
+
+  /* now the upper layer */
+  switch (nxt)
+    {
+
+    case IP_PROTO_TCP:
+      DecodeTCP(pkt + offset, end - offset, NULL, hdr);
+      return;
+
+    case IP_PROTO_UDP:
+      DecodeUDP(pkt + offset, end - offset, NULL, hdr);
+      return;
+
+    case IP_PROTO_ICMPV6:
+      DecodeICMP6(pkt + offset, end - offset, hdr);
+      return;
+
+    case IP_PROTO_IPIP:
+      printf("IPv4 encapsulated in IPv6\n");
+      DecodeIP(pkt + offset, end - offset);
+      return;
+
+    case IP_PROTO_IPV6:
+      printf("IPv6 encapsulated in IPv6\n");
+      DecodeIPV6(pkt + offset, end - offset, pkthdr);
+      return;
+
+    case IP_PROTO_GRE:
+      DecodeGRE(pkt + offset, end - offset, NULL);
+      return;
+
+    default:
+      printf("Unknown next header: code %d\n", nxt);
+      return;
+    }
+
 }

@@ -23,10 +23,12 @@
 
 /* Virtual LAN (802.1Q) protocol header file */
 
-#define ETHERNET_MAX_LEN_ENCAP          1518    /* 802.3 (+LLC) or ether II ? */
+/* ETHERNET_MAX_LEN_ENCAP is defined in ethernet.h */
 
+/* Tag Control Information: priority (3 bits), drop eligible indicator
+ * (1 bit, formerly CFI) and VLAN identifier (12 bits) */
 #define VTH_PRIORITY(vh)  ((ntohs((vh)->vth_pri_cfi_vlan) & 0xe000) >> 13)
-#define VTH_CFI(vh)	  ((ntohs((vh)->vth_pri_cfi_vlan & 0x0100) >> 12))
+#define VTH_CFI(vh)	  ((ntohs((vh)->vth_pri_cfi_vlan) & 0x1000) >> 12)
 #define VTH_VLAN(vh)	  ((ntohs((vh)->vth_pri_cfi_vlan) & 0x0FFF))
 
 typedef struct _VlanTagHdr

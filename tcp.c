@@ -41,6 +41,8 @@
 /* needed for TCP, you know TCP rely on IP */
 #include "ip.h" 
 
+#include "ipv6.h" /* TCP can also rely on IPv6 */
+
 #include "terminal.h" /* escape sequences for color,... */
 
 #include "color.h" /* describe color and protocols */
@@ -59,19 +61,241 @@ extern int verb; /* verbose level
 		  * -1:   quiet
 		  */
 
+extern int check_cksum; /* verify TCP and UDP checksums */
+
+
+/* read a 16 bits number in network order at any alignment */
+static u_int16_t get_u16(u_int8_t * ptr)
+{
+  return (ptr[0] << 8) | ptr[1];
+}
+
+/* read a 32 bits number in network order at any alignment */
+static u_int32_t get_u32(u_int8_t * ptr)
+{
+  return ((u_int32_t) ptr[0] << 24) | ((u_int32_t) ptr[1] << 16)
+    | ((u_int32_t) ptr[2] << 8) | (u_int32_t) ptr[3];
+}
+
 
 /*
- * Function: DecodeTCP(u_int8_t *, const u_int32_t,IPHdr *)
+ * Function: PrintTCPFlags(u_int8_t)
  *
- * Purpose: Decode the TCP transport layer
+ * Purpose: print the TCP flags in bright, like [SYN, ACK]
  *
- * Arguments: pkt => ptr to the packet data
- *            len => length from here to the end of the packet
- *            iptr=> ptr to th IP header
+ * Arguments: flags => the flags byte of the TCP header
  *
  * Returns: void function
  */
-void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
+static void PrintTCPFlags(u_int8_t flags)
+{
+
+  /* same order as tcpdump: [SYN, ACK], [PSH, ACK], [FIN, ACK]... */
+  static const struct { u_int8_t bit; const char * name; } flag_names[] = {
+    { TH_SYN, "SYN" }, { TH_FIN, "FIN" }, { TH_RST, "RST" }, { TH_PUSH, "PSH" },
+    { TH_ACK, "ACK" }, { TH_URG, "URG" }, { TH_ECE, "ECE" }, { TH_CWR, "CWR" }
+  };
+
+  unsigned int i;
+  int first = 1;
+
+  printf("Flags: [");
+
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
+
+  for (i = 0; i < sizeof(flag_names) / sizeof(flag_names[0]); i++) {
+    if (flags & flag_names[i].bit) {
+      printf("%s%s", first ? "" : ", ", flag_names[i].name);
+      first = 0;
+    }
+  }
+
+  if (first) {
+    printf("none");
+  }
+
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLOR( TCP_COLOR );
+  }
+
+  printf("]");
+
+}
+
+
+/*
+ * Function: DecodeTCPOptions(u_int8_t *, u_int32_t)
+ *
+ * Purpose: Decode and print the TCP options,
+ *          length checks as in DecodeTCPOptions of snort 2.9.20
+ *
+ * Arguments: ptr => ptr to the first option
+ *            len => length of the options
+ *
+ * Returns: void function
+ */
+static void DecodeTCPOptions(u_int8_t * ptr, u_int32_t len)
+{
+
+  u_int8_t * end = ptr + len;
+  u_int8_t kind;   /* option kind */
+  u_int8_t olen;   /* option length */
+  int expected;    /* expected length, 0 if variable */
+  int first = 1;   /* first option printed */
+
+  printf("Options: ");
+
+  while (ptr < end) {
+
+    kind = *ptr;
+
+    printf("%s", first ? "" : ", ");
+    first = 0;
+
+    if (kind == TCPOPT_EOL) { /* the rest is padding */
+      printf("EOL");
+      break;
+    }
+
+    if (kind == TCPOPT_NOP) { /* a single byte */
+      printf("NOP");
+      ptr++;
+      continue;
+    }
+
+    if ((ptr + 2 > end) || (ptr[1] < 2) || (ptr + ptr[1] > end)) {
+      printf("option %d with bad length, stop decoding options", kind);
+      break;
+    }
+
+    olen = ptr[1];
+
+    /* check the length of the fixed size options */
+    switch (kind) {
+    case TCPOPT_MAXSEG:    expected = TCPOPT_MAXSEG_LEN;    break;
+    case TCPOPT_WSCALE:    expected = TCPOPT_WSCALE_LEN;    break;
+    case TCPOPT_SACKOK:    expected = TCPOPT_SACKOK_LEN;    break;
+    case TCPOPT_ECHO:
+    case TCPOPT_ECHOREPLY: expected = TCPOPT_ECHO_LEN;      break;
+    case TCPOPT_TIMESTAMP: expected = TCPOPT_TIMESTAMP_LEN; break;
+    case TCPOPT_MD5SIG:    expected = TCPOPT_MD5SIG_LEN;    break;
+    case TCPOPT_USER_TO:   expected = TCPOPT_USER_TO_LEN;   break;
+    default:               expected = 0;                    break;
+    }
+
+    if ((expected && (olen != expected))
+	|| ((kind == TCPOPT_SACK) && ((olen - 2) % 8))) {
+      printf("option %d with bad length %d", kind, olen);
+      ptr += olen;
+      continue;
+    }
+
+    switch (kind) {
+
+    case TCPOPT_MAXSEG:
+      printf("MSS %d", get_u16(ptr + 2));
+      break;
+
+    case TCPOPT_WSCALE:
+      printf("WS %d", ptr[2]);
+      break;
+
+    case TCPOPT_SACKOK:
+      printf("SACK permitted");
+      break;
+
+    case TCPOPT_SACK: {
+      int b;
+      printf("SACK");
+      for (b = 2; b + 8 <= olen; b += 8) {
+	printf(" {%u:%u}", get_u32(ptr + b), get_u32(ptr + b + 4));
+      }
+    }
+      break;
+
+    case TCPOPT_ECHO:
+      printf("Echo %u", get_u32(ptr + 2));
+      break;
+
+    case TCPOPT_ECHOREPLY:
+      printf("Echo reply %u", get_u32(ptr + 2));
+      break;
+
+    case TCPOPT_TIMESTAMP:
+      printf("TS val %u ecr %u", get_u32(ptr + 2), get_u32(ptr + 6));
+      break;
+
+    case TCPOPT_MD5SIG:
+      printf("MD5 signature");
+      break;
+
+    case TCPOPT_USER_TO:
+      printf("User timeout %d %s", get_u16(ptr + 2) & 0x7FFF,
+	     (ptr[2] & 0x80) ? "min" : "s");
+      break;
+
+    case TCPOPT_AUTH:
+      if (olen >= 4) {
+	printf("TCP-AO keyid %d rnextkeyid %d", ptr[2], ptr[3]);
+      }
+      else {
+	printf("TCP-AO");
+      }
+      break;
+
+    case TCPOPT_MPTCP: {
+      static const char * mptcp_sub[] = {
+	"MP_CAPABLE", "MP_JOIN", "DSS", "ADD_ADDR", "REMOVE_ADDR",
+	"MP_PRIO", "MP_FAIL", "MP_FASTCLOSE", "MP_TCPRST"
+      };
+      int sub = (olen >= 3) ? (ptr[2] >> 4) : -1;
+      printf("MPTCP %s", ((sub >= 0) && (sub <= 8)) ? mptcp_sub[sub] : "unknown subtype");
+    }
+      break;
+
+    case TCPOPT_TFO:
+      if (olen == 2) {
+	printf("TFO cookie request");
+      }
+      else {
+	printf("TFO cookie (%d bytes)", olen - 2);
+      }
+      break;
+
+    case TCPOPT_EXP:
+      printf("Experimental (%d bytes)", olen);
+      break;
+
+    default:
+      printf("option %d length %d", kind, olen);
+      break;
+    }
+
+    ptr += olen;
+  }
+
+  printf("\n");
+
+}
+
+
+/*
+ * Function: DecodeTCP(u_int8_t *, const u_int32_t,IPHdr *,IP6RawHdr *)
+ *
+ * Purpose: Decode the TCP transport layer,
+ *          based on DecodeTCP of snort 2.9.20 and PrintTCPHeader of log.c
+ *
+ * Arguments: pkt => ptr to the packet data
+ *            len => length from here to the end of the packet
+ *            iptr=> ptr to th IP header (NULL over IPv6)
+ *            ip6ptr=> ptr to the IPv6 header (NULL over IPv4)
+ *
+ * Returns: void function
+ */
+void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6ptr)
 {
 
   TCPHdr * tcptr;
@@ -91,8 +315,7 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
   u_int32_t tcp_options_len;
   u_int16_t sp;       /* source port TCP */
   u_int16_t dp;       /* dest port TCP */
-  u_int8_t *data;     /* packet payload pointer */
-  u_int16_t dsize;        /* packet payload size */
+  u_int32_t dsize;    /* packet payload size */
 
   if (send_esc) {
     SETCOLOR(TCP_COLOR);
@@ -100,7 +323,7 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
 
   printf("TCP ");
   
-  if(len < 20)
+  if(len < TCP_HEADER_LEN)
     {
       printf("TCP packet (len = %d) cannot contain "
 	     "20 byte header\n", len);
@@ -114,20 +337,21 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
   /* multiply the payload offset value by 4 */
   hlen = TCP_OFFSET(tcptr) << 2;
 
-  if (verb >0) {
-    printf("TCP th_off is %d, passed len is %lu\n", 
-	   TCP_OFFSET(tcptr), (unsigned long)len);
-  }
+  /* translate source and destination port */
+  sp = ntohs(tcptr->th_sport);
+  dp = ntohs(tcptr->th_dport);
 
-    if(hlen < 20)
+  PrintPorts(sp,dp,TCP_COLOR);
+
+  if(hlen < TCP_HEADER_LEN)
     {
-        printf("TCP Data Offset (%d) < hlen (%d) \n",
-	       TCP_OFFSET(tcptr), hlen);
+      printf("TCP Data Offset (%d) < hlen (%d) \n",
+	     TCP_OFFSET(tcptr), hlen);
 
-        return;
+      return;
     }
 
-    if(hlen > len)
+  if(hlen > len)
     {
       printf("TCP Data Offset(%d) < longer than payload(%d)!\n",
 	     TCP_OFFSET(tcptr) << 2, len);
@@ -135,7 +359,54 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
       return;
     }
 
-      
+  /* flags, sequence and acknowledgement numbers, window */
+  PrintTCPFlags(tcptr->th_flags);
+
+  printf("  Seq: %u", (u_int32_t) ntohl(tcptr->th_seq));
+
+  if (tcptr->th_flags & TH_ACK) {
+    printf("  Ack: %u", (u_int32_t) ntohl(tcptr->th_ack));
+  }
+
+  printf("  Win: %d", ntohs(tcptr->th_win));
+
+  if (tcptr->th_flags & TH_URG) {
+    printf("  Urg: %d", ntohs(tcptr->th_urp));
+  }
+
+  printf("\n");
+
+  if (verb > 0) {
+    printf("Header length: %d bytes   Reserved bits: 0x%X\n",
+	   hlen, TCP_X2(tcptr));
+  }
+
+  /* if options are present, decode them */
+  tcp_options_len = hlen - TCP_HEADER_LEN;
+
+  if(tcp_options_len > 0)
+    {
+      DecodeTCPOptions(pkt + TCP_HEADER_LEN, tcp_options_len);
+    }
+
+  /* size of the data */
+  dsize = len - hlen;
+
+  if ((dsize > 0) || (verb > 0)) {
+    printf("Payload: %u bytes\n", dsize);
+  }
+
+  /* if we're being "stateless" we probably don't care about the TCP 
+   * checksum, but it's not bad to keep around for shits and giggles */
+  if (!check_cksum) { /* -K: the network card may compute it after capture */
+    return;
+  }
+
+  /* calculate the checksum */
+  if (ip6ptr != NULL) { /* the IPv6 pseudo header is not the same */
+    csum = in_chksum_ip6(ip6ptr, IP_PROTO_TCP, pkt, len);
+  }
+  else {
     /* setup the pseudo header for checksum calculation */
     ph.sip = (u_int32_t)(iptr->ip_src.s_addr); /* unsigned long int */
     ph.dip = (u_int32_t)(iptr->ip_dst.s_addr);
@@ -143,51 +414,20 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr)
     ph.protocol = iptr->ip_proto;
     ph.tcplen = htons((u_short)len);
 
-    /* if we're being "stateless" we probably don't care about the TCP 
-     * checksum, but it's not bad to keep around for shits and giggles */
-    /* calculate the checksum */
     csum = in_chksum_tcp((u_int16_t *)&ph, (u_int16_t *)(tcptr), len);
+  }
         
-    if(csum)
-      {
-      
-	printf("Bad TCP checksum (0x%x versus 0x%x)\n", csum,
-	       ntohs(tcptr->th_sum));
+  if(csum)
+    {
+      /* in_chksum_tcp sums the words in memory order, in_chksum_ip6 in network order */
+      printf("Bad TCP checksum 0x%04x (should be 0x%04x)\n", ntohs(tcptr->th_sum),
+	     expected_cksum((ip6ptr != NULL) ? csum : ntohs(csum), ntohs(tcptr->th_sum)));
+    }
+  else
+    {
+      if (verb >0) {
+	printf("TCP Checksum: OK\n");
       }
-    else
-      {
-	if (verb >0) {
-	  printf("TCP Checksum: OK\n");
-	}
-      }
-    
-
-    /* if options are present, decode them */
-    tcp_options_len = hlen - 20;
-
-    if(tcp_options_len > 0)
-    {
-        printf("%lu bytes of tcp options....\n", 
-                    (unsigned long)(tcp_options_len));
-
     }
-    
-    /* translate source and destination port */
-    sp = ntohs(tcptr->th_sport);
-    dp = ntohs(tcptr->th_dport);
 
-    PrintPorts(sp,dp,TCP_COLOR);
-   
-
-    /* set the data pointer and size */
-    data = (u_int8_t *) (pkt + hlen);
-
-    if(hlen < len)
-    {
-        dsize = (u_short)(len - hlen);
-    }
-    else
-    {
-        dsize = 0;
-    }
 }

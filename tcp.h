@@ -70,6 +70,44 @@ typedef struct _TCPHdr
 
 /* more macros for TCP offset */
 #define TCP_OFFSET(tcph)	(((tcph)->th_offx2 & 0xf0) >> 4)
+#define TCP_X2(tcph)		((tcph)->th_offx2 & 0x0f) /* reserved bits */
+
+#define TCP_HEADER_LEN          20
+
+/* TCP flags (taken from snort 2.9.20 decode.h) */
+#define TH_FIN  0x01
+#define TH_SYN  0x02
+#define TH_RST  0x04
+#define TH_PUSH 0x08
+#define TH_ACK  0x10
+#define TH_URG  0x20
+#define TH_ECE  0x40 /* ECN Echo (RFC 3168) */
+#define TH_CWR  0x80 /* Congestion Window Reduced (RFC 3168) */
+
+/* TCP options (taken from snort 2.9.20 decode.h and IANA registry) */
+#define TCPOPT_EOL              0   /* End of Option List, 1 byte */
+#define TCPOPT_NOP              1   /* No Operation, 1 byte */
+#define TCPOPT_MAXSEG           2   /* Maximum Segment Size, 4 bytes */
+#define TCPOPT_WSCALE           3   /* Window Scale (RFC 7323), 3 bytes */
+#define TCPOPT_SACKOK           4   /* SACK permitted (RFC 2018), 2 bytes */
+#define TCPOPT_SACK             5   /* SACK blocks (RFC 2018), 2 + 8n bytes */
+#define TCPOPT_ECHO             6   /* Echo (RFC 1072, obsolete), 6 bytes */
+#define TCPOPT_ECHOREPLY        7   /* Echo Reply (RFC 1072, obsolete), 6 bytes */
+#define TCPOPT_TIMESTAMP        8   /* Timestamps (RFC 7323), 10 bytes */
+#define TCPOPT_MD5SIG           19  /* MD5 Signature (RFC 2385), 18 bytes */
+#define TCPOPT_USER_TO          28  /* User Timeout (RFC 5482), 4 bytes */
+#define TCPOPT_AUTH             29  /* TCP Authentication Option (RFC 5925) */
+#define TCPOPT_MPTCP            30  /* Multipath TCP (RFC 8684) */
+#define TCPOPT_TFO              34  /* TCP Fast Open (RFC 7413) */
+#define TCPOPT_EXP              254 /* experimental (RFC 6994) */
+
+#define TCPOPT_MAXSEG_LEN       4
+#define TCPOPT_WSCALE_LEN       3
+#define TCPOPT_SACKOK_LEN       2
+#define TCPOPT_ECHO_LEN         6
+#define TCPOPT_TIMESTAMP_LEN    10
+#define TCPOPT_MD5SIG_LEN       18
+#define TCPOPT_USER_TO_LEN      4
 
 
 /*

@@ -66,6 +66,7 @@
 #include <net/if.h> /* added for get_device_info */
 #include <sys/types.h> /* added for getuid() */
 #include <string.h> /* added for strlen */
+#include <strings.h> /* added for strncasecmp */
 
 #ifdef NO_USABLE_ETHER_NTOA
 
@@ -99,7 +100,6 @@
 
 #include "snif.h" /* function names definitions */
 
-#include "ipv6.h"
 
 
 /* older systems do not have multi hash table feature in glibc
@@ -123,92 +123,85 @@
 /*********************** Sub Routines begin here *************************/ 
 
 
-/* PrintPorts
- * print source and destination ports
+/* PrintPort
+ * print one port number and the name of its service,
+ * the data file gives "name<TAB>description" for each port:
+ * only the name is printed, followed by the description in verbose mode
  */
 
-void PrintPorts(u_int16_t sp,u_int16_t dp,char color) {
+static void PrintPort(u_int16_t port,char color) {
 
   if (send_esc) {
     SETATTRIB( BRIGHT );
   }
-  printf("%d ",sp); /* print port number */
-  
 
-  if (((sp < 1024) || (not_wkp)) && (text_port)) { /* print port text */
-
-    ENTRY query,*result;
-
-#ifdef HAVE_HCREATE_R
-    int err;
-#endif
-
-    if (send_esc) {
-      NORMALMODE();
-      SETCOLOR( color );
-    }
-    
-    
-
-#ifndef HAVE_HCREATE_R
-    sprintf(portsrc,"P%d",sp);
-    query.key = portsrc;
-    result = hsearch(query, FIND);
-    printf("(%s)",
-	   (char *) (result ?  result->data : "unknown" ));
-#else
-    sprintf(portsrc,"%d",sp);
-    query.key = portsrc;
-    err = hsearch_r(query, FIND, &result,&htab_ports );
-    printf("(%s)",
-	  (char *)( err ? result->data : "unknown") );
-#endif
-
-  }
+  printf("%d",port); /* print port number */
 
   if (send_esc) {
     NORMALMODE();
     SETCOLOR( color );
   }
 
-  printf(" > ");
+  if (((port < 1024) || (not_wkp)) && (text_port)) { /* print port text */
 
-  if (send_esc) {
-    SETATTRIB( BRIGHT );
-  }
-
-  printf("%d ",dp); /* print port number */
-  
-
-  if (((dp < 1024) || (not_wkp)) && (text_port)) { /* print port text */
-
+    char key[8]; /* "P" prefix + 5 digits + end of string */
+    char * value = NULL; /* "name<TAB>description" found in hash table */
+    char * desc; /* description of the service */
     ENTRY query,*result;
 
-#ifdef HAVE_HCREATE_R
-    int err;
-#endif
-   
-
-    if (send_esc) {
-      NORMALMODE();
-      SETCOLOR( color );
-    }
-    
 #ifndef HAVE_HCREATE_R
-    sprintf(portdst,"P%d",dp);
-    query.key = portdst;
+    sprintf(key,"P%d",port); /* only one hash table, port keys are prefixed */
+    query.key = key;
     result = hsearch(query, FIND);
-    printf("(%s)",
-	   (char *) (result ? result->data : "unknown") );
+    if (result) {
+      value = (char *) result->data;
+    }
 #else
-    sprintf(portdst,"%d",dp);
-    query.key = portdst;
-    err = hsearch_r(query, FIND, &result,&htab_ports );
-    printf("(%s)",
-	   (char *) (err ? result->data : "unknown") );
+    sprintf(key,"%d",port);
+    query.key = key;
+    if (hsearch_r(query, FIND, &result,&htab_ports )) {
+      value = (char *) result->data;
+    }
 #endif
+
+    if (value == NULL) {
+      printf(" (unknown)");
+      return;
+    }
+
+    desc = strchr(value,'\t');
+
+    if (desc == NULL) { /* old data file: description only */
+      printf(" (%s)",value);
+    }
+    else {
+      int namelen = desc - value; /* the name is before the tab */
+      desc++;
+      printf(" (%.*s",namelen,value);
+      /* in verbose mode add the description if it says more than the name */
+      if ((verb > 0)
+	  && ((strlen(desc) != namelen) || strncasecmp(value,desc,namelen))) {
+	printf(": %s",desc);
+      }
+      printf(")");
+    }
 
   }
+
+}
+
+
+/* PrintPorts
+ * print source and destination ports
+ */
+
+void PrintPorts(u_int16_t sp,u_int16_t dp,char color) {
+
+  PrintPort(sp,color);
+
+  printf(" > ");
+
+  PrintPort(dp,color);
 
   printf("\n");
 
@@ -278,9 +271,6 @@ void CleanExit(int exit_val)
   }
 
 #endif
-
-
-  BsdFragHashCleanup();
 
   /* exit */
   exit(exit_val);
@@ -548,6 +538,15 @@ void printResolvedIP(char * addr) {
 
 
 
+/* resolve IPv6 address in hostname and print it:
+ * not available with the old single hash table DNS cache
+ */
+void printResolvedIP6(struct in6_addr * addr) {
+
+}
+
+
+
 #else
 
 
@@ -658,6 +657,92 @@ void printResolvedIP(char * addr) {
 
 }
 
+
+/* resolve IPv6 address in hostname and print it
+ * check before if already in the program DNS cache
+ * (the same cache as IPv4, the key is the address in text)
+ */
+void printResolvedIP6(struct in6_addr * addr) {
+
+  char ipstring[INET6_ADDRSTRLEN]; /* address in text, key in DNS cache */
+
+  char hostname[NI_MAXHOST];
+
+  struct sockaddr_in6 sa;
+
+  ENTRY query,*result;
+
+  int err; /* return code of getnameinfo */
+
+  time_t ti = time(NULL);
+
+  if (IN6_IS_ADDR_MULTICAST(addr)) {
+    printf(" (Multicast Address)");
+    return;
+  }
+
+  /* no name for these ones, do not wait for a DNS answer */
+  if (IN6_IS_ADDR_LINKLOCAL(addr) || IN6_IS_ADDR_UNSPECIFIED(addr)) {
+    return;
+  }
+
+  inet_ntop(AF_INET6, addr, ipstring, sizeof(ipstring));
+  query.key = ipstring;
+
+  if (hsearch_r(query, FIND, &result, &htab_dnscache)) { /* it was in DNS cache */
+    if (*((char *) result->data)) { /* empty if no name was found */
+      printf(" (%s)",(char *)result->data);
+    }
+    return;
+  }
+
+  if ((nbrinc >= maxszcache)  /* out of memory DNS cache */
+      || (creatime + DEADLINE < ti)) { /* out of time DNS cache */
+    hdestroy_r(&htab_dnscache); /* destroy it */
+    if (hcreate_r (maxszcache, &htab_dnscache) == 0) { /* recreate it empty */
+      fprintf(stderr,"hcreate_r: impossible to install hash table\n");
+      CleanExit(1);
+    }
+    nbrinc = 0;
+    creatime = ti;
+  }
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sin6_family = AF_INET6;
+  sa.sin6_addr = *addr;
+
+  err = getnameinfo((struct sockaddr *) &sa, sizeof(sa),
+		    hostname, sizeof(hostname), NULL, 0, NI_NAMEREQD);
+
+  if (err == 0) {
+    printf(" (%s)",hostname);
+  }
+  else if (err == EAI_NONAME) { /* no name: we record an empty name */
+    hostname[0] = 0;
+  }
+  else { /* temporary failure, do not store it in cache */
+    return;
+  }
+
+  /* store hostname */
+  query.key = strdup(ipstring);
+  query.data = strdup(hostname);
+  if ((query.key == NULL) || (query.data == NULL)) {
+    fprintf(stderr,"malloc: Out of memory error\n");
+    CleanExit(1);
+  }
+
+  if (hsearch_r(query, ENTER, &result, &htab_dnscache ) == 0) {
+    fprintf (stderr, "failed in hsearch_r\n");
+    perror("hsearch_r");
+    CleanExit(1);
+  }
+
+  nbrinc++;
+
+}
+
+
 #endif
 
 
@@ -743,7 +828,7 @@ void ParseCmdLine(int argc, char *argv[])
   int ch;                         /* storage var for getopt info */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:hvqpedtsnlar")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargK")) != EOF)
     {
       switch(ch) {
 
@@ -753,6 +838,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" options :\n\n");
 	printf(" -h : help\n");
 	printf(" -i interface : specify interface (ex: -i eth0)\n");
+	printf(" -f file : read packets from a pcap (tcpdump) file instead of an interface\n");
 	printf(" -v : verbose mode\n");
 	printf(" -c n : capture n packet(s) and exit\n");
 	printf(" -p : don't put the interface into promiscuous mode\n");
@@ -765,6 +851,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -a : do not use hash tables (save memory)\n");
 	printf(" -g : port number greater or equal to 1024 will be displayed in text\n");
 	printf(" -r : resolve IP address in hostname\n");
+	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
 	CleanExit(0);
 	break;
 		  
@@ -778,6 +865,10 @@ void ParseCmdLine(int argc, char *argv[])
 
       case 'c':
 	pkt_count = atoi(optarg);
+	break;
+
+      case 'f':
+	pcap_infile = optarg;
 	break;
 	
       case 'p':
@@ -845,6 +936,10 @@ void ParseCmdLine(int argc, char *argv[])
 	not_wkp = 1;
 	break;
 
+      case 'K':
+	check_cksum = 0;
+	break;
+
       }
     }
 
@@ -869,8 +964,9 @@ void InitHashTable(char * filename,char * prefix) {
   FILE * fd;
   int c;
   int i;
-  char tmpstr[100];
+  char tmpstr[256]; /* one line of the data file */
   char keystr[50];
+  char * valstr; /* start of the value in the line */
   char * hkey;
   int keystrlen,valstrlen;
   ENTRY e, *ep;
@@ -908,14 +1004,20 @@ void InitHashTable(char * filename,char * prefix) {
 
   /* parse file and create hash table, 5 lines in perl , 50 in C language !!! */
 
-  /* get a line */
+  /* get a line, a too long line is truncated to avoid buffer overflow */
   while ((c = fgetc (fd)) != EOF && c != '\n') {
-    tmpstr[i++] = c;
+    if (i < sizeof(tmpstr) - 1) {
+      tmpstr[i++] = c;
+    }
   }
 
-  if (c == '\n') { /* got one line */
+  if ((c == '\n') || (i > 0)) { /* got one line (the last one may have no new line) */
     tmpstr[i] = 0; /* set the end of string */
-    sscanf(tmpstr,"%s\t",keystr); /* parse the key */
+    valstr = strchr(tmpstr,'\t'); /* key and value are separated by a tab */
+    if ((valstr == NULL) || (sscanf(tmpstr,"%49s",keystr) != 1)) {
+      goto loop; /* skip empty or malformed line */
+    }
+    valstr++;
     keystrlen = strlen(keystr); /* compute length */
     hkey = (char *) malloc(keystrlen+1+strlen(prefix)); /* find memory for key and prefix */
     if (errno == ENOMEM) {
@@ -927,13 +1029,13 @@ void InitHashTable(char * filename,char * prefix) {
     e.key = hkey; /* set the key in hash table */
  
    /* get the value now */
-    valstrlen = strlen(tmpstr+keystrlen+1);
+    valstrlen = strlen(valstr);
     e.data = (char *) malloc(valstrlen+1);
     if (errno == ENOMEM) {
       fprintf(stderr,"malloc: Out of memory error\n");
       CleanExit(1);
     }
-    strcpy(e.data,tmpstr+keystrlen+1);
+    strcpy(e.data,valstr);
     ep = hsearch(e, ENTER); /* store the whole in hash table */
     if (ep == NULL) {
       fprintf (stderr, "failed in hsearch (prefix:%s)\n",prefix);
@@ -964,8 +1066,9 @@ void InitHashTable(char * filename,struct hsearch_data *htab) {
   FILE * fd;
   int c;
   int i;
-  char tmpstr[100];
+  char tmpstr[256]; /* one line of the data file */
   char keystr[50];
+  char * valstr; /* start of the value in the line */
   char * hkey;
   int keystrlen,valstrlen;
   ENTRY e, *ep;
@@ -1004,14 +1107,20 @@ void InitHashTable(char * filename,struct hsearch_data *htab) {
 
   /* parse file and create hash table, 5 lines in perl , 50 in C language !!! */
 
-  /* get a line */
+  /* get a line, a too long line is truncated to avoid buffer overflow */
   while ((c = fgetc (fd)) != EOF && c != '\n') {
-    tmpstr[i++] = c;
+    if (i < sizeof(tmpstr) - 1) {
+      tmpstr[i++] = c;
+    }
   }
 
-  if (c == '\n') { /* got one line */
+  if ((c == '\n') || (i > 0)) { /* got one line (the last one may have no new line) */
     tmpstr[i] = 0; /* set the end of string */
-    sscanf(tmpstr,"%s\t",keystr); /* parse the key */
+    valstr = strchr(tmpstr,'\t'); /* key and value are separated by a tab */
+    if ((valstr == NULL) || (sscanf(tmpstr,"%49s",keystr) != 1)) {
+      goto loop; /* skip empty or malformed line */
+    }
+    valstr++;
     keystrlen = strlen(keystr); /* compute length */
     hkey = (char *) malloc(keystrlen+1); /* find memory for key */
     if (errno == ENOMEM) {
@@ -1022,13 +1131,13 @@ void InitHashTable(char * filename,struct hsearch_data *htab) {
     e.key = hkey; /* set the key in hash table */
  
    /* get the value now */
-    valstrlen = strlen(tmpstr+keystrlen+1);
+    valstrlen = strlen(valstr);
     e.data = (char *) malloc(valstrlen+1);
     if (errno == ENOMEM) {
       fprintf(stderr,"malloc: Out of memory error\n");
       CleanExit(1);
     }
-    strcpy(e.data,tmpstr+keystrlen+1);
+    strcpy(e.data,valstr);
     err = hsearch_r(e, ENTER, &ep, htab ); /* store the whole in hash table */
     if (err == 0) {
       fprintf (stderr, "failed in hsearch_r (filename:%s)\n",filename);
@@ -1316,9 +1425,6 @@ int main(int argc, char **argv) {
     bpf_u_int32 maskp;/* subnet mask */
     struct in_addr addr;
     int datalink; /* data link type */
-    
-    /* Initialize max frag hash for the BSD IPv6 fragmentation exploit */
-    int ipv6_max_frag_sessions = 10000;
 
 
 #ifndef HAVE_HCREATE_R
@@ -1339,7 +1445,8 @@ int main(int argc, char **argv) {
     ShowProgramName(); 
     ShowAuthorInfo();
 
-    if (getuid() != 0) { /* if we are not root mode */
+    /* reading a pcap file does not require root privileges */
+    if ((pcap_infile == NULL) && (getuid() != 0)) { /* if we are not root mode */
       
       fprintf(stderr,"Sorry, this program must be run by root.\n");
       CleanExit(1);
@@ -1353,10 +1460,12 @@ int main(int argc, char **argv) {
 
     /* get the size of the terminal connected to stdin */
     if (ioctl(0, TIOCGWINSZ, &ws)) {
-        perror("failed to get window size");
-        return 1;
+        /* not a terminal (ex: input or output redirected),
+	 * keep the default separator line length */
+        ws.ws_row = 24;
+        ws.ws_col = sl;
     }
-    
+
     fprintf(stderr,"terminal size: %d x %d\n",ws.ws_row,ws.ws_col);
 
     /* init separator line length */
@@ -1379,8 +1488,6 @@ int main(int argc, char **argv) {
 
     /***********************************************************************/
 
-    
-    BsdFragHashInit(ipv6_max_frag_sessions);
 
 
 #ifndef HAVE_HCREATE_R
@@ -1423,20 +1530,6 @@ int main(int argc, char **argv) {
 	} 
 
 	nel += CountLinesInFile(filename);
-      
-	/* initiate at first run  */
-	portsrc = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	} 
-	
-	/* initiate at first run  */
-	portdst = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	} 
       }
     }
     
@@ -1468,20 +1561,6 @@ int main(int argc, char **argv) {
 	} 
 
 	nel += CountLinesInFile(filename);
-	
-	/* initiate at first run  */
-	vendsrc = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	}
-	
-	/* initiate at first run  */
-	venddst = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	}
       }  
 	   
     }
@@ -1562,17 +1641,6 @@ int main(int argc, char **argv) {
 
 	/* initiated at first run  */
 	memset (&htab_ports, 0, sizeof (struct hsearch_data)); /* must be filled with 0 */
-	portsrc = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	} 
-	
-	portdst = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	} 
 
 	rv = hcreate_r (nel, &htab_ports);
 	
@@ -1623,17 +1691,6 @@ int main(int argc, char **argv) {
 	
 	/* initiated at first run  */
 	memset (&htab_ethernet, 0, sizeof (struct hsearch_data)); /* must be filled with 0 */
-	vendsrc = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	}
-		
-	venddst = (char *) malloc(8);
-	if (errno == ENOMEM) {
-	  fprintf(stderr,"malloc: Out of memory error\n");
-	  CleanExit(1);
-	}
 
 	rv = hcreate_r (nel, &htab_ethernet);
 
@@ -1673,23 +1730,47 @@ int main(int argc, char **argv) {
     /* now we begin (at last!) with the network hack */
 
 
-    if(dev == NULL) {
+    if (pcap_infile != NULL) { /* offline mode: no device needed */
 
-      /* grab a device to peak into... */
-      dev = pcap_lookupdev(errbuf);
+      printf("FILE: %s\n",pcap_infile);
 
     }
+    else {
 
-    if(dev == NULL)
-    {
-        printf("%s\n",errbuf);
-        CleanExit(1);
+      if(dev == NULL) {
+
+	/* grab a device to peak into: the first one that is not
+	 * a loopback (pcap_lookupdev is deprecated) */
+	pcap_if_t * alldevs;
+	pcap_if_t * d;
+
+	if (pcap_findalldevs(&alldevs, errbuf) == 0) {
+	  for (d = alldevs; d != NULL; d = d->next) {
+	    if (!(d->flags & PCAP_IF_LOOPBACK)) {
+	      dev = strdup(d->name);
+	      break;
+	    }
+	  }
+	  if (dev == NULL) {
+	    snprintf(errbuf, PCAP_ERRBUF_SIZE, "no network interface found");
+	  }
+	  pcap_freealldevs(alldevs);
+	}
+
+      }
+
+      if(dev == NULL)
+	{
+	  printf("%s\n",errbuf);
+	  CleanExit(1);
+	}
+
+      printf("DEV: %s\n",dev);
+
+      /* find IP address of our interface we snif in */ 
+      get_device_info();
+
     }
-
-    printf("DEV: %s\n",dev);
-
-    /* find IP address of our interface we snif in */ 
-    get_device_info();
      
 
 #ifdef HAVE_HCREATE_R
@@ -1707,70 +1788,85 @@ int main(int argc, char **argv) {
 #endif
 
 
-    /* ask pcap for the network address and mask of the device */
-    ret = pcap_lookupnet(dev,&netp,&maskp,errbuf);
+    if (pcap_infile != NULL) {
 
-    if(ret == -1)
-      {
-	fprintf(stderr,"%s\n",errbuf);
-	CleanExit(1);
-      }
+      /* read packets from a tcpdump file instead of a live interface */
+      descr = pcap_open_offline(pcap_infile,errbuf);
 
-    /* get the network address in a human readable form */
-    addr.s_addr = netp;
-    net = inet_ntoa(addr);
+      if(descr == NULL)
+	{
+	  fprintf(stderr,"pcap_open_offline(): %s\n",errbuf);
+	  CleanExit(1);
+	}
 
-    if(net == NULL)/* thanks Scott :-P */
-      {
-	perror("inet_ntoa");
-	CleanExit(1);
-      }
+    }
+    else {
 
-    printf("NET: %s\n",net);
+      /* ask pcap for the network address and mask of the device */
+      ret = pcap_lookupnet(dev,&netp,&maskp,errbuf);
 
-    /* do the same as above for the device's mask */
-    addr.s_addr = maskp;
-    mask = inet_ntoa(addr);
+      if(ret == -1)
+        {
+	  fprintf(stderr,"%s\n",errbuf);
+	  CleanExit(1);
+        }
+
+      /* get the network address in a human readable form */
+      addr.s_addr = netp;
+      net = inet_ntoa(addr);
+
+      if(net == NULL)/* thanks Scott :-P */
+        {
+	  perror("inet_ntoa");
+	  CleanExit(1);
+        }
+
+      printf("NET: %s\n",net);
+
+      /* do the same as above for the device's mask */
+      addr.s_addr = maskp;
+      mask = inet_ntoa(addr);
   
-    if(mask == NULL)
-      {
-	perror("inet_ntoa");
-	CleanExit(1);
-      }
+      if(mask == NULL)
+        {
+	  perror("inet_ntoa");
+	  CleanExit(1);
+        }
   
-    printf("MASK: %s\n",mask);
+      printf("MASK: %s\n",mask);
 
   
 
-    /* open the device for sniffing.
+      /* open the device for sniffing.
 
-       pcap_t *pcap_open_live(char *device,int snaplen, int prmisc,int to_ms,
-       char *ebuf)
+         pcap_t *pcap_open_live(char *device,int snaplen, int prmisc,int to_ms,
+         char *ebuf)
 
-       snaplen - maximum size of packets to capture in bytes
-       promisc - set card in promiscuous mode?
-       to_ms   - time to wait for packets in miliseconds before read
-       times out
-       errbuf  - if something happens, place error string here
-     */
-
-
-    /* get packet capture descriptor from capture.  Note if you change
-       "prmisc" param to anything other than zero, you will get all
-       packets your device sees, whether they are intendeed for you or 
-       not!! Be sure you know the rules of the network you are running
-       on before you set your card in promiscuous mode or you could get
-       yourself in serious doo doo!!! (also need to be root to run in
-       promisuous mode)                                               */
+         snaplen - maximum size of packets to capture in bytes
+         promisc - set card in promiscuous mode?
+         to_ms   - time to wait for packets in miliseconds before read
+         times out
+         errbuf  - if something happens, place error string here
+       */
 
 
-    descr = pcap_open_live(dev,BUFSIZ,promisc,PACKETS_READ_TIMEOUT,errbuf);
+      /* get packet capture descriptor from capture.  Note if you change
+         "prmisc" param to anything other than zero, you will get all
+         packets your device sees, whether they are intendeed for you or 
+         not!! Be sure you know the rules of the network you are running
+         on before you set your card in promiscuous mode or you could get
+         yourself in serious doo doo!!! (also need to be root to run in
+         promisuous mode)                                               */
 
-    if(descr == NULL)
-      {
-        fprintf(stderr,"pcap_open_live(): %s\n",errbuf);
-        CleanExit(1);
-      }
+
+      descr = pcap_open_live(dev,BUFSIZ,promisc,PACKETS_READ_TIMEOUT,errbuf);
+
+      if(descr == NULL)
+        {
+          fprintf(stderr,"pcap_open_live(): %s\n",errbuf);
+          CleanExit(1);
+        }
+    }
 
     datalink = pcap_datalink(descr);
 
@@ -1782,32 +1878,6 @@ int main(int argc, char **argv) {
       
       grinder = DecodeEthPkt;
 
-      if (show_eth_vend) { /* will show ethernet vendor codes */
-	/* test if file exist */
-	char * etherfile1 = "/usr/local/share/ieee_ethercodes.dat";
-	char * etherfile2 = "./var/ieee_ethercodes.dat";
-	int ff1 = access (etherfile1, R_OK); /* check if read is possible */
-	int ff2 = access (etherfile2, R_OK);
-	if ((ff1 != 0) && (ff2 != 0)) { /* none can be read */
-	  fprintf (stderr, "Unable to read %s\n",etherfile1);
-	  fprintf (stderr, "Unable to read %s\n",etherfile2);
-	  fprintf (stderr, "Disabling showing of ethernet vendor codes.\n");
-	  show_eth_vend = 0;
-	}
-	else { /* then we parse the right file */
-
-#ifndef HAVE_HCREATE_R
-
-	  (! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat","E") : InitHashTable("./var/ieee_ethercodes.dat","E");
-
-#else
-
-	  (! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat",&htab_ethernet) : InitHashTable("./var/ieee_ethercodes.dat",&htab_ethernet);
-
-#endif
-
-	}
-      }
 
       break;
 
@@ -1894,6 +1964,15 @@ int main(int argc, char **argv) {
             break;
 #endif
 
+#ifdef DLT_LINUX_SLL2
+    case DLT_LINUX_SLL2:   /* Linux socket version 2 (the "any" device) */
+           
+            printf("Data link type is Linux socket version 2.\n");
+            grinder = DecodeLinuxSLL2Pkt;
+
+            break;
+#endif
+
 #ifdef DLT_PFLOG
         case DLT_PFLOG:
            
@@ -1954,6 +2033,15 @@ int main(int argc, char **argv) {
             break;
 #endif
 
+#ifdef DLT_IEEE802_11_RADIO
+        case DLT_IEEE802_11_RADIO:   /* Wi-Fi monitor mode */
+
+	  printf("Data link type is IEEE 802.11 with radiotap header.\n");
+
+            grinder = DecodeRadiotapPkt;
+            break;
+#endif
+
 #ifdef DLT_PPP_SERIAL
         case DLT_PPP_SERIAL:         /* PPP with full HDLC header*/
       
@@ -1982,6 +2070,37 @@ int main(int argc, char **argv) {
       fprintf(stderr,"\ncannot handle data link type %d\n", datalink);
       CleanExit(1);
       
+    }
+
+
+    /* load the ethernet vendor codes, they are used by every data link
+     * that carries ethernet addresses (ethernet, linux cooked sockets,
+     * ethernet inside a tunnel, neighbor discovery options...) */
+    if (show_eth_vend) { /* will show ethernet vendor codes */
+      /* test if file exist */
+      char * etherfile1 = "/usr/local/share/ieee_ethercodes.dat";
+      char * etherfile2 = "./var/ieee_ethercodes.dat";
+      int ff1 = access (etherfile1, R_OK); /* check if read is possible */
+      int ff2 = access (etherfile2, R_OK);
+      if ((ff1 != 0) && (ff2 != 0)) { /* none can be read */
+	fprintf (stderr, "Unable to read %s\n",etherfile1);
+	fprintf (stderr, "Unable to read %s\n",etherfile2);
+	fprintf (stderr, "Disabling showing of ethernet vendor codes.\n");
+	show_eth_vend = 0;
+      }
+      else { /* then we parse the right file */
+
+#ifndef HAVE_HCREATE_R
+
+	(! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat","E") : InitHashTable("./var/ieee_ethercodes.dat","E");
+
+#else
+
+	(! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat",&htab_ethernet) : InitHashTable("./var/ieee_ethercodes.dat",&htab_ethernet);
+
+#endif
+
+      }
     }
 
 

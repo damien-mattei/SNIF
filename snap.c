@@ -40,9 +40,16 @@
 #include "snif.h" /* function names definitions */
 
 #include "snap.h"
+#include "stp.h"
 #include "ethernet.h"
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
+
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
 
 
 
@@ -63,7 +70,7 @@ void DecodeSNAP(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
 
   SNAPHdr * snap_hdr_ptr;
   
-  u_int32_t dataoff = sizeof(SNAPHdr);
+  u_int32_t dataoff = SNAP_HDR_LEN;
 
   if(len < dataoff)
     {
@@ -73,25 +80,32 @@ void DecodeSNAP(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
   
   snap_hdr_ptr = (SNAPHdr *) pkt;
   
-  if (dump_link_layer) { 
+  /* the encapsulation details are shown in verbose mode */
+  if (dump_link_layer && (verb > 0)) { 
 
-    printf( "SNAP  Organization code: %X%X%X EtherType: %X\n",
+    printf( "SNAP  Organization code: %02X%02X%02X EtherType: 0x%04X\n",
             snap_hdr_ptr->orgcode[0],snap_hdr_ptr->orgcode[1],snap_hdr_ptr->orgcode[2]
-	    , snap_hdr_ptr->ethertype);
+	    , SNAP_ETHERTYPE(snap_hdr_ptr));
       	         
     }
 
-   switch(htons(snap_hdr_ptr->ethertype))
+   /* Cisco PVST+: spanning tree BPDU with a Cisco organization code */
+   if ((snap_hdr_ptr->orgcode[0] == STP_PVST_OUI0) && (snap_hdr_ptr->orgcode[1] == STP_PVST_OUI1)
+       && (snap_hdr_ptr->orgcode[2] == STP_PVST_OUI2)
+       && (SNAP_ETHERTYPE(snap_hdr_ptr) == STP_PVST_PID)) {
+     DecodeSTP(pkt + dataoff, len - dataoff);
+     return;
+   }
+
+   switch(SNAP_ETHERTYPE(snap_hdr_ptr))
     {
         case ETHERNET_TYPE_IP:
 	  DecodeIP(pkt + dataoff, len - dataoff);
             return;
 
         case ETHERNET_TYPE_ARP:
-	  DecodeARP();
-	  return;
         case ETHERNET_TYPE_REVARP:
-	  DecodeReverseARP();
+	  DecodeARP(pkt + dataoff, len - dataoff);
 	  return;
 
         case ETHERNET_TYPE_8021Q:
@@ -106,9 +120,13 @@ void DecodeSNAP(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
           DecodeIPV6(pkt + dataoff,len - dataoff,pkthdr);
 	  return;
 
+        case ETHERNET_TYPE_IPX:
+          DecodeIPX(pkt + dataoff,len - dataoff);
+	  return;
+
         default:
             printf( "Unknown network protocol: code %d\n",
-                        htons(snap_hdr_ptr->ethertype));
+                        SNAP_ETHERTYPE(snap_hdr_ptr));
 	    return;
     }
 

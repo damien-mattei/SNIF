@@ -26,6 +26,17 @@
 #define PPP_VJ_COMP    0x002d        /* VJ compressed TCP/IP */
 #define PPP_VJ_UCOMP   0x002f        /* VJ uncompressed TCP/IP */
 #define PPP_IPX        0x002b        /* Novell IPX Protocol */
+#define PPP_IPV6       0x0057        /* Internet Protocol version 6 */
+#define PPP_COMP       0x00fd        /* compressed datagram (MPPE...) */
+#define PPP_IPCP       0x8021        /* IP Control Protocol */
+#define PPP_IPV6CP     0x8057        /* IPv6 Control Protocol */
+#define PPP_CCP        0x80fd        /* Compression Control Protocol */
+#define PPP_LCP        0xc021        /* Link Control Protocol */
+#define PPP_PAP        0xc023        /* Password Authentication Protocol */
+#define PPP_CHAP       0xc223        /* Challenge Handshake Authentication Protocol */
+
+#define PPP_ADDR_ALL_STATIONS   0xff  /* HDLC address (RFC 1662) */
+#define PPP_CTRL_UNNUMBERED     0x03  /* HDLC control (RFC 1662) */
 
 /* ppp header structure
  *

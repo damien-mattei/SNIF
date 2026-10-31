@@ -103,7 +103,7 @@ void DecodePppPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
  *
  * Returns: void function
  */
-void DecodePppPktEncapsulated( u_int8_t * pkt,const u_int32_t len)
+void DecodePppPktEncapsulated( u_int8_t * pkt,u_int32_t len)
 {
     static int had_vj = 0;
     u_int16_t protocol;
@@ -120,6 +120,19 @@ void DecodePppPktEncapsulated( u_int8_t * pkt,const u_int32_t len)
       return;
     }
 
+    if((pkt[0] == PPP_ADDR_ALL_STATIONS) && (pkt[1] == PPP_CTRL_UNNUMBERED))
+    {
+        /* full HDLC header (rfc1662 section 3.2), used inside PPTP GRE,
+         * as in DecodePppPktEncapsulated of snort 2.9.20 */
+        pkt += 2;
+        len -= 2;
+
+        if(len < 2)
+        {
+            printf("Length not big enough for even a single header or a one byte payload\n");
+            return;
+        }
+    }
     
     if(pkt[0] & 0x01)
     {
@@ -131,7 +144,7 @@ void DecodePppPktEncapsulated( u_int8_t * pkt,const u_int32_t len)
     }
     else
     {
-        protocol = ntohs(pkt[0] | pkt[1] << 8);
+        protocol = (pkt[0] << 8) | pkt[1];
         hlen = 2;
     }
     
@@ -164,6 +177,21 @@ void DecodePppPktEncapsulated( u_int8_t * pkt,const u_int32_t len)
 
         case PPP_IPX:
 	    DecodeIPX(pkt + hlen, len - hlen);
+            break;
+
+        case PPP_IPV6:
+	    DecodeIPV6(pkt + hlen, len - hlen, NULL);
+            break;
+
+        default:
+	    printf("PPP protocol 0x%04X %s(not decoded)\n", protocol,
+		   (protocol == PPP_LCP) ? "Link Control Protocol " :
+		   (protocol == PPP_IPCP) ? "IP Control Protocol " :
+		   (protocol == PPP_IPV6CP) ? "IPv6 Control Protocol " :
+		   (protocol == PPP_CCP) ? "Compression Control Protocol " :
+		   (protocol == PPP_COMP) ? "compressed datagram " :
+		   (protocol == PPP_PAP) ? "Password Authentication Protocol " :
+		   (protocol == PPP_CHAP) ? "Challenge Handshake Authentication Protocol " : "");
             break;
     }
 }

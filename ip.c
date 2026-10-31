@@ -97,6 +97,127 @@ void decodeIpOptionType(u_int8_t type) {
 
 
 /*
+ * Function: PrintTOS(u_int8_t)
+ *
+ * Purpose: print the Differentiated Services Code Point (RFC 2474)
+ *          and the Explicit Congestion Notification (RFC 3168) found
+ *          in the IPv4 Type Of Service or in the IPv6 Traffic Class
+ *
+ * Arguments: tos => the Type Of Service / Traffic Class byte
+ *
+ * Returns: void function
+ */
+void PrintTOS(u_int8_t tos)
+{
+
+  static const char * ecn_name[] = {
+    "Not-ECT", "ECT(1)", "ECT(0)", "CE congestion experienced"
+  };
+
+  u_int8_t dscp = tos >> 2;
+
+  printf("DSCP %d", dscp);
+
+  if (dscp == 0) {
+    printf(" (default)");
+  }
+  else if ((dscp & 0x07) == 0) { /* class selectors, compatible with IP precedence */
+    printf(" (CS%d)", dscp >> 3);
+  }
+  else if ((dscp >= 10) && (dscp <= 38) && ((dscp & 0x01) == 0)
+	   && ((dscp & 0x07) != 0) && (((dscp >> 1) & 0x03) != 0)) { /* assured forwarding */
+    printf(" (AF%d%d)", dscp >> 3, (dscp >> 1) & 0x03);
+  }
+  else if (dscp == 46) {
+    printf(" (EF expedited forwarding)");
+  }
+  else if (dscp == 44) {
+    printf(" (VOICE-ADMIT)");
+  }
+  else if (dscp == 1) {
+    printf(" (LE lower effort)");
+  }
+
+  printf(", ECN %s", ecn_name[tos & 0x03]);
+
+}
+
+
+/*
+ * Function: decodeIpSecurity(u_int8_t *, u_int8_t)
+ *
+ * Purpose: decode the Security option, in the RFC 791 format
+ *          (length 11) or in the Basic Security Option format of RFC 1108
+ *
+ * Arguments: opt => ptr to the option (type byte)
+ *            length => length of the option, already checked
+ *
+ * Returns: void function
+ */
+static void decodeIpSecurity(u_int8_t * opt, u_int8_t length)
+{
+
+  u_int8_t level; /* RFC 1108 classification level */
+
+  level = (length >= 3) ? opt[2] : 0;
+
+  if ((length == 11) && (level != IPOPT_BSO_TOP_SECRET) && (level != IPOPT_BSO_SECRET)
+      && (level != IPOPT_BSO_CONFIDENTIAL) && (level != IPOPT_BSO_UNCLASSIFIED)) {
+
+    /* RFC 791: S (security), C (compartments), H (handling), TCC */
+    u_int16_t sec = (opt[2] << 8) | opt[3];
+    const char * name;
+
+    switch (sec) {
+    case IPOPT_SECURITY_UNCLASSIFIED: name = "Unclassified"; break;
+    case IPOPT_SECURITY_CONFIDENTIAL: name = "Confidential"; break;
+    case IPOPT_SECURITY_EFTO:         name = "EFTO"; break;
+    case IPOPT_SECURITY_MMMM:         name = "MMMM"; break;
+    case IPOPT_SECURITY_PROG:         name = "PROG"; break;
+    case IPOPT_SECURITY_RESTRICTED:   name = "Restricted"; break;
+    case IPOPT_SECURITY_SECRET:       name = "Secret"; break;
+    case IPOPT_SECURITY_TOP_SECRET:   name = "Top Secret"; break;
+    default:                          name = "reserved for future use"; break;
+    }
+
+    printf("    Security (RFC 791): %s (0x%04X)\n", name, sec);
+    printf("    Compartments: 0x%04X  Handling restrictions: 0x%04X  Transmission control code: 0x%02X%02X%02X\n",
+	   (opt[4] << 8) | opt[5], (opt[6] << 8) | opt[7], opt[8], opt[9], opt[10]);
+    return;
+  }
+
+  if (length < 3) {
+    printf("    Truncated security option (length %d)\n", length);
+    return;
+  }
+
+  /* RFC 1108 Basic Security Option */
+  printf("    Classification level (RFC 1108): %s (0x%02X)\n",
+	 (level == IPOPT_BSO_TOP_SECRET) ? "Top Secret" :
+	 (level == IPOPT_BSO_SECRET) ? "Secret" :
+	 (level == IPOPT_BSO_CONFIDENTIAL) ? "Confidential" :
+	 (level == IPOPT_BSO_UNCLASSIFIED) ? "Unclassified" :
+	 ((level == IPOPT_BSO_RESERVED1) || (level == IPOPT_BSO_RESERVED2)
+	  || (level == IPOPT_BSO_RESERVED3) || (level == IPOPT_BSO_RESERVED4)) ? "Reserved" : "invalid",
+	 level);
+
+  if (length > 3) {
+    /* first byte of the protection authority flags,
+     * the low bit tells that another byte follows */
+    u_int8_t flags = opt[3];
+    printf("    Protection authority:%s%s%s%s%s%s\n",
+	   (flags & 0x80) ? " GENSER" : "",
+	   (flags & 0x40) ? " SIOP-ESI" : "",
+	   (flags & 0x20) ? " SCI" : "",
+	   (flags & 0x10) ? " NSA" : "",
+	   (flags & 0x08) ? " DOE" : "",
+	   (flags & 0xF8) ? "" : " none");
+  }
+
+}
+
+
+/*
  * Function: DecodeIP(u_int8_t *, const u_int32_t)
  *
  * Purpose: Decode the IP network layer
@@ -191,7 +312,8 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 		 ip_len - len, ip_len, len);
 	  ip_len = len;
         }
-        else {
+        else if (verb > 0) {
+	  /* usually the padding of a short ethernet frame (60 bytes minimum) */
 	  printf("IP Len field is %d bytes smaller than captured length.\n    (ip.len: %d, cap.len: %d)\n",
 		 len - ip_len, ip_len, len);
 	  
@@ -279,9 +401,9 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
     if (verb > 0) {
       printf("IP version: %u   IP header length: %lu\n" 
 	     ,ipver,(unsigned long)hlen);
-      printf("TTL:%d TOS:0x%X ID:%d IP Datagram Length:%d",
-	     iptr->ip_ttl,
-	     iptr->ip_tos,
+      printf("TTL:%d TOS:0x%02X (", iptr->ip_ttl, iptr->ip_tos);
+      PrintTOS(iptr->ip_tos);
+      printf(") ID:%d IP Datagram Length:%d\n",
 	     ntohs(iptr->ip_id),
 	     ntohs(iptr->ip_len));  
       printf("Flags status:\n");
@@ -293,6 +415,9 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
       }
       if (df) { /* don't fragment */
 	printf("Don't fragment flag set\n");
+      }
+      if ((iptr->ip_tos & 0x03) == 0x03) { /* a router signals a congestion */
+	printf("ECN: congestion experienced\n");
       }
     }
     
@@ -329,14 +454,28 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	type = *option_ptr; 
 
+	if ((type != IPOPT_EOL) && (type != IPOPT_NOP)) {
+	  /* every other option has a length byte, check it before using it */
+	  if ((option_ptr + 1 >= end_ptr) || (*(option_ptr + 1) < 2)
+	      || (option_ptr + *(option_ptr + 1) > end_ptr)) {
+	    printf("\n  Option 0x%02X with bad length, stop decoding options.\n", type);
+	    break;
+	  }
+	}
+
 
 	switch(type)  {
 
 	case IPOPT_RTRALT:
 
-	  printf("\n  RTRALT.\n");
+	  printf("\n  Router Alert.\n");
 	  decodeIpOptionType(type);
-	  byte_skip = 1; /* we have a single byte option */
+	  length = *(option_ptr + 1);
+	  if (length == 4) {
+	    u_int16_t value = (*(option_ptr + 2) << 8) | *(option_ptr + 3);
+	    printf("    %s (%d)\n", (value == 0) ? "Router shall examine packet" : "Reserved value", value);
+	  }
+	  byte_skip = length;
 
 	  break;
 
@@ -372,9 +511,10 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	    ptr_ip = option_ptr + 3; /* 3 bytes (type,length,pointer) */
 	    /* end_record = option_ptr + pointer; */ /* end of records */
 	    end_record = option_ptr + length;
-	    while ((ptr_ip + 1) < end_record) { /* still in valid record zone */
-	      /* print IP */
-	      printf("    %d.%d.%d.%d\n",*ptr_ip,*(ptr_ip+1),*(ptr_ip+2),*(ptr_ip+3));
+	    while ((ptr_ip + 4) <= end_record) { /* still in valid record zone */
+	      /* print IP, the slots at or after the pointer are not filled yet */
+	      printf("    %d.%d.%d.%d%s\n",*ptr_ip,*(ptr_ip+1),*(ptr_ip+2),*(ptr_ip+3),
+		     (ptr_ip - option_ptr + 1 >= pointer) ? " (empty)" : "");
 	      ptr_ip += 4; /* 4 bytes: size of an IP address */
 	    }
 	  }
@@ -411,18 +551,17 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	    case TSONLY:
 
-	      while ((ptr_record + 1) < end_record) { /* still in valid record zone */
+	      while ((ptr_record + 4) <= end_record) { /* still in valid record zone */
 		/* printf("%02X.%02X.%02X.%02X|%02X.%02X.%02X.%02X\n",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3),*(ptr_record+4),*(ptr_record+5),*(ptr_record+6),*(ptr_record+7)); */
 		/* timestamp = ntohl(*ptr_record); */
-		if ((*ptr_record) & 0x80) {
-		  printf("    non-standard value ");
-		   (*ptr_record) &= 0x7F; /* clear highest bit */
-		}
 		timestamp = ((u_int32_t) (*ptr_record) << 24)
 		  | ((u_int32_t) (*(ptr_record+1)) << 16)
 		  | ((u_int32_t) (*(ptr_record+2)) << 8)
 		  | ((u_int32_t) (*(ptr_record+3)));
-		printf("    %d\n",timestamp); /* print timestamp */
+		/* high bit set: not in milliseconds since midnight UT */
+		printf("    %u%s%s\n",timestamp & 0x7FFFFFFF,
+		       (timestamp & 0x80000000) ? " (non-standard value)" : "",
+		       (ptr_record - option_ptr + 1 >= pointer) ? " (empty)" : ""); /* print timestamp */
 		/* printf("ptr_record:%d\t end_record:%d\n",ptr_record,end_record); */
 		ptr_record += 4; /* 4 bytes: size of internet timestamp */
 	      }
@@ -432,23 +571,21 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	    case TSANDADDR:
 	    case TSPRESPEC:
 
-	      while ((ptr_record + 1) < end_record) { /* still in valid record zone */
+	      while ((ptr_record + 8) <= end_record) { /* still in valid record zone */
 		/* print IP */
 		/* printf("%02X.%02X.%02X.%02X|%02X.%02X.%02X.%02X\n",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3),*(ptr_record+4),*(ptr_record+5),*(ptr_record+6),*(ptr_record+7)); */
 		printf("    %d.%d.%d.%d\t",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3));
 		/* printf("ptr_record:%d\t end_record:%d\n",ptr_record,end_record); */
 		ptr_record += 4; /* 4 bytes: size of an IP address */
-		if ((*ptr_record) & 0x80) {
-		  printf("    non-standard value ");
-		   (*ptr_record) &= 0x7F; /* clear highest bit */
-		}
 		/* timestamp = ntohl(*ptr_record); */
 		timestamp = ((u_int32_t) (*ptr_record) << 24)
 		  | ((u_int32_t) (*(ptr_record+1)) << 16)
 		  | ((u_int32_t) (*(ptr_record+2)) << 8)
 		  | ((u_int32_t) (*(ptr_record+3)));
-		
-		printf("    %d\n",timestamp); /* print timestamp */
+		/* high bit set: not in milliseconds since midnight UT */
+		printf("    %u%s%s\n",timestamp & 0x7FFFFFFF,
+		       (timestamp & 0x80000000) ? " (non-standard value)" : "",
+		       (ptr_record - 4 - option_ptr + 1 >= pointer) ? " (empty)" : ""); /* print timestamp */
 		ptr_record += 4; /* 4 bytes: size of internet timestamp */
 	      }
 
@@ -472,6 +609,44 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	  printf("\n  Security.\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
+	  decodeIpSecurity(option_ptr, length);
+	  byte_skip = length;
+
+	  break;
+
+	case IPOPT_EXTSEC:
+
+	  printf("\n  Extended Security (RFC 1108).\n");
+	  decodeIpOptionType(type);
+	  length = *(option_ptr + 1);
+	  if (length >= 3) {
+	    printf("    Additional security info format code: %d (%d bytes of information)\n",
+		   *(option_ptr + 2), length - 3);
+	  }
+	  byte_skip = length;
+
+	  break;
+
+	case IPOPT_CIPSO:
+
+	  printf("\n  Commercial IP Security Option (CIPSO).\n");
+	  decodeIpOptionType(type);
+	  length = *(option_ptr + 1);
+	  if (length >= 6) {
+	    u_int8_t * tag = option_ptr + 6; /* first tag after the domain of interpretation */
+	    printf("    Domain of interpretation: %u\n",
+		   ((u_int32_t) *(option_ptr + 2) << 24) | ((u_int32_t) *(option_ptr + 3) << 16)
+		   | ((u_int32_t) *(option_ptr + 4) << 8) | (u_int32_t) *(option_ptr + 5));
+	    /* tags 1, 2 and 5 give the sensitivity level in their 4th byte */
+	    while ((tag + 2 <= option_ptr + length) && (tag[1] >= 2) && (tag + tag[1] <= option_ptr + length)) {
+	      printf("    Tag type %d", tag[0]);
+	      if (((tag[0] == 1) || (tag[0] == 2) || (tag[0] == 5)) && (tag[1] >= 4)) {
+		printf(", sensitivity level %d", tag[3]);
+	      }
+	      printf("\n");
+	      tag += tag[1];
+	    }
+	  }
 	  byte_skip = length;
 
 	  break;
@@ -611,13 +786,13 @@ September 1981
 	    /* end_record = option_ptr + pointer; */ /* end of records */
 	    end_record = option_ptr + length;
 
-	    while ((ptr_ip + 1) < end_record) { /* still in valid record zone */
+	    while ((ptr_ip + 4) <= end_record) { /* still in valid record zone */
 	      
 	      /* print IP */
 	      printf("    %d.%d.%d.%d",*ptr_ip,*(ptr_ip+1),*(ptr_ip+2),*(ptr_ip+3));
 	      
 	      /* show pointed router */
-	      if (local_ptr == pointer) {
+	      if (local_ptr + 4 == pointer) {
 		printf(" (next)\n");
 	      }
 	      else {
@@ -729,13 +904,13 @@ Specification
 	    /* end_record = option_ptr + pointer; */ /* end of records */
 	    end_record = option_ptr + length;
 
-	    while ((ptr_ip + 1) < end_record) { /* still in valid record zone */
+	    while ((ptr_ip + 4) <= end_record) { /* still in valid record zone */
 	      
 	      /* print IP */
 	      printf("    %d.%d.%d.%d",*ptr_ip,*(ptr_ip+1),*(ptr_ip+2),*(ptr_ip+3));
 	      
 	      /* show pointed router */
-	      if (local_ptr == pointer) {
+	      if (local_ptr + 4 == pointer) {
 		printf(" (next)\n");
 	      }
 	      else {
@@ -757,9 +932,12 @@ Specification
 	case IPOPT_SATID:
 
 	  printf("\n  Stream Identifier.\n");
-	  stream_id = *(option_ptr + 2);
-	  printf("Stream ID = %i\n",stream_id);
+	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
+	  if (length == 4) {
+	    stream_id = (*(option_ptr + 2) << 8) | *(option_ptr + 3);
+	    printf("    Stream ID = %i\n",stream_id);
+	  }
 	  byte_skip = length;
 
 	  break;
@@ -787,17 +965,34 @@ Specification
 
       case IPPROTO_TCP:
 
-	DecodeTCP(pkt + hlen, ip_len, iptr);
+	DecodeTCP(pkt + hlen, ip_len, iptr, NULL);
 	return;
 
       case IPPROTO_UDP:
 
-	DecodeUDP(pkt + hlen, ip_len, iptr);
+	DecodeUDP(pkt + hlen, ip_len, iptr, NULL);
 	return;
 
       case IPPROTO_ICMP:
       
 	DecodeICMP(pkt + hlen, ip_len, iptr);
+	return;
+
+      case IPPROTO_IGMP:
+
+	DecodeIGMP(pkt + hlen, ip_len, iptr);
+	return;
+
+      case IPPROTO_IPIP: /* IP in IP tunnel (RFC 2003) */
+
+	printf("IPv4 encapsulated in IPv4 (IP-in-IP)\n");
+	DecodeIP(pkt + hlen, ip_len);
+	return;
+
+      case IPPROTO_IPV6: /* 6in4 tunnel (RFC 4213) */
+
+	printf("IPv6 encapsulated in IPv4 (6in4)\n");
+	DecodeIPV6(pkt + hlen, ip_len, NULL);
 	return;
 
       case IPPROTO_GRE:

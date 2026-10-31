@@ -44,6 +44,12 @@
 
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
+extern int verb; /* verbose level
+		  *  1:   verbose
+		  *  0:   normal
+		  * -1:   quiet
+		  */
+
 
 
 
@@ -72,7 +78,8 @@ void DecodeLLC(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
   llc_hdr_ptr = (LLCHdr *) pkt;
 
   
-  if (dump_link_layer) { 
+  /* the encapsulation details are shown in verbose mode */
+  if (dump_link_layer && (verb > 0)) { 
 
       printf("LLC  DSAP: 0x%X SSAP: 0x%X\n",llc_hdr_ptr->dsap,llc_hdr_ptr->ssap); 
 	         
@@ -88,12 +95,27 @@ void DecodeLLC(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
 
     }
  
+  else if((llc_hdr_ptr->dsap == LLC_SAP_STP) && (llc_hdr_ptr->ssap == LLC_SAP_STP))
+    {
+        /* Spanning Tree Bridge Protocol Data Unit */
+        DecodeSTP(pkt + sizeof(LLCHdr), len - sizeof(LLCHdr));
+    }
+
+  else if((llc_hdr_ptr->dsap == LLC_SAP_IPX) && (llc_hdr_ptr->ssap == LLC_SAP_IPX))
+    {
+        /* Novell IPX over 802.2 */
+        DecodeIPX(pkt + sizeof(LLCHdr), len - sizeof(LLCHdr));
+    }
+ 
     /*
      * Now let's see if we actually care about the packet... If we don't,
      * throw it out!!!
      */
     else  {
-     printf("This Packet isn't an IP/ARP packet...\n");
+     printf("LLC %s (not decoded)\n",
+	    (llc_hdr_ptr->dsap == LLC_SAP_NETBIOS) ? "NetBIOS" :
+	    (llc_hdr_ptr->dsap == LLC_SAP_OSI) ? "ISO network layer" :
+	    (llc_hdr_ptr->dsap == LLC_SAP_IP) ? "IP over 802.2" : "unknown service access point");
  
    }
 

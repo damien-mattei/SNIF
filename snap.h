@@ -22,8 +22,15 @@
 
 /* Sub Network Access Protocol */
 
+/* the ethertype is stored as 2 bytes: with a u_int16_t after the
+ * 3 bytes of orgcode the compiler adds a padding byte and the
+ * structure would be 6 bytes long instead of 5 */
 typedef struct _SNAPHdr
 {
     u_int8_t orgcode[3];
-    u_int16_t ethertype;
+    u_int8_t ethertype[2];
 }              SNAPHdr ;
+
+#define SNAP_HDR_LEN 5
+
+#define SNAP_ETHERTYPE(h) (((h)->ethertype[0] << 8) | (h)->ethertype[1])

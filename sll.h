@@ -38,3 +38,29 @@ typedef struct _SLLHdr {
 
 #define LINUX_SLL_P_802_3       0x0001  /* Novell 802.3 frames without 802.2 LLC header */
 #define LINUX_SLL_P_802_2       0x0004  /* 802.2 frames (not D/I/X Ethernet) */
+
+/* 'Linux cooked captures' version 2, used by libpcap >= 1.10
+ * when capturing on the "any" device (see pcap/sll.h) */
+
+#define SLL2_HDR_LEN    20              /* total header length */
+
+typedef struct _SLL2Hdr {
+        u_int16_t       sll2_protocol;  /* protocol */
+        u_int16_t       sll2_reserved_mbz; /* reserved - must be zero */
+        u_int32_t       sll2_if_index;  /* 1-based interface index */
+        u_int16_t       sll2_hatype;    /* link-layer address type */
+        u_int8_t        sll2_pkttype;   /* packet type */
+        u_int8_t        sll2_halen;     /* link-layer address length */
+        u_int8_t        sll2_addr[SLL_ADDRLEN]; /* link-layer address */
+} SLL2Hdr;
+
+/* packet types (direction of the packet) */
+#define LINUX_SLL_HOST          0       /* packet was sent to us */
+#define LINUX_SLL_BROADCAST     1       /* packet was broadcast */
+#define LINUX_SLL_MULTICAST     2       /* packet was multicast */
+#define LINUX_SLL_OTHERHOST     3       /* packet was sent to somebody else */
+#define LINUX_SLL_OUTGOING      4       /* packet was sent by us */
+
+/* link-layer address types (see linux/if_arp.h) */
+#define SLL_HATYPE_ETHER        1       /* ARPHRD_ETHER */
+#define SLL_HATYPE_LOOPBACK     772     /* ARPHRD_LOOPBACK */

@@ -29,12 +29,15 @@ raw.c \
 i4lrawip.c \
 i4lciscoip.c \
 vlan.c vlan.h \
-arp.c \
+arp.c arp.h \
 ip.c ip.h \
 ipv6.c ipv6.h\
-ipx.c \
+ipx.c ipx.h \
 ethlb.c \
 icmp.c icmp.h \
+icmp6.c icmp6.h \
+igmp.c igmp.h \
+stp.c stp.h \
 tcp.c tcp.h \
 udp.c udp.h \
 gre.c gre.h \
@@ -44,11 +47,11 @@ color.h
 
 #AM_CPPFLAGS = -I/usr/include/pcap
 
-snif_LDADD = -lpcap \
-sfutil/libsfutil.a
+# -lpcap is added to LIBS by configure
 
-SUBDIRS = sfutil
+# data files read by snif, installed in $(datadir) (/usr/local/share)
+dist_data_DATA = var/ieee_ethercodes.dat var/portnumbers.dat
 
-INCLUDES = @INCLUDES@
-
-data_DATA = var/ieee_ethercodes.dat var/portnumbers.dat
+# scripts to update the data files
+EXTRA_DIST = contrib/readme contrib/updatevar.sh \
+contrib/preformat_ethercodes.pl contrib/preformat_ports_iana.pl

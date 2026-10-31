@@ -70,6 +70,21 @@ typedef struct _IPHdr {
 }      IPHdr;
 
 /* some usefull macros for decoding IP */
+/*
+ * correct value of a bad checksum field:
+ * the checksum computed over a packet is ~(S + stored) where S is
+ * the sum without the checksum field, the correct value is ~S, that is
+ * computed + stored (one's complement addition, both in network order)
+ */
+static inline unsigned short expected_cksum( unsigned short computed, unsigned short stored )
+{
+  unsigned int sum = computed + stored;
+
+  sum = (sum & 0xffff) + (sum >> 16);
+
+  return (unsigned short) sum;
+}
+
 #define IP_VER(iph)	(((iph)->ip_verhl & 0xf0) >> 4)
 #define IP_HLEN(iph)	((iph)->ip_verhl & 0x0f)
 
@@ -122,9 +137,9 @@ static inline unsigned short in_chksum_ip(  unsigned short * w, int blen )
     #define IPOPT_NOP            0x01
 #endif
 
-/* strange but this one is not defined in RFC791 */
+/* Router Alert (RFC 2113): type 148, copied flag set, class 0, number 20 */
 #ifndef IPOPT_RTRALT
-    #define IPOPT_RTRALT         0x14
+    #define IPOPT_RTRALT         0x94
 #endif
 
 #ifndef IPOPT_RR
@@ -155,7 +170,17 @@ static inline unsigned short in_chksum_ip(  unsigned short * w, int blen )
     #define IPOPT_SSRR           0x89
 #endif
 
-/* codes for security options */
+/* Extended Security (RFC 1108) */
+#ifndef IPOPT_EXTSEC
+    #define IPOPT_EXTSEC         0x85
+#endif
+
+/* Commercial IP Security Option (CIPSO, FIPS 188, used by Linux NetLabel) */
+#ifndef IPOPT_CIPSO
+    #define IPOPT_CIPSO          0x86
+#endif
+
+/* codes for security options (RFC 791 format, length 11) */
 #define IPOPT_SECURITY_UNCLASSIFIED  0x0000
 #define IPOPT_SECURITY_CONFIDENTIAL  0xF135
 #define IPOPT_SECURITY_EFTO          0x789A
@@ -173,6 +198,16 @@ static inline unsigned short in_chksum_ip(  unsigned short * w, int blen )
 #define IPOPT_SECURITY_RFFU6         0x89AF
 #define IPOPT_SECURITY_RFFU7         0xC4D6
 #define IPOPT_SECURITY_RFFU8         0xE26B
+
+/* classification levels of the Basic Security Option (RFC 1108) */
+#define IPOPT_BSO_TOP_SECRET         0x3D
+#define IPOPT_BSO_SECRET             0x5A
+#define IPOPT_BSO_CONFIDENTIAL       0x96
+#define IPOPT_BSO_UNCLASSIFIED       0xAB
+#define IPOPT_BSO_RESERVED4          0x01
+#define IPOPT_BSO_RESERVED3          0x66
+#define IPOPT_BSO_RESERVED2          0xCC
+#define IPOPT_BSO_RESERVED1          0xF1
 
 
 

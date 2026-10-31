@@ -28,6 +28,7 @@ partially tested on the following systems,this means that at some point of devel
 -Linux Fedora Core 10
 -Linux YLD 6.0, Yellow Dog Linux, PowerPC
 -Linux Ubuntu 18.10 (Cosmic Cuttlefish)
+-Linux Ubuntu 24.04 (Noble Numbat), libpcap 1.10
 
 -Mac OS X.3 server (Panther),requires Xcode
 -Mac OS X.3 (Panther),requires Xcode

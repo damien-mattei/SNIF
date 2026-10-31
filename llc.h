@@ -31,3 +31,11 @@ typedef struct _LLCHdr
   u_int8_t ssap; /* source service access point */
   u_int8_t u_ctl; /* control byte(s) ? */
 }              LLCHdr;
+
+/* some Service Access Points (IEEE 802.2) */
+#define LLC_SAP_IP          0x06    /* Internet Protocol */
+#define LLC_SAP_STP         0x42    /* Spanning Tree (IEEE 802.1D) */
+#define LLC_SAP_SNAP        0xAA    /* SubNetwork Access Protocol */
+#define LLC_SAP_IPX         0xE0    /* Novell IPX */
+#define LLC_SAP_NETBIOS     0xF0    /* NetBIOS */
+#define LLC_SAP_OSI         0xFE    /* ISO network layer (IS-IS...) */

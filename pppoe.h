@@ -64,3 +64,7 @@ typedef struct _PPPoE_Tag
 #define PPPoE_TAG_SERVICE_NAME_ERROR 0x0201
 #define PPPoE_TAG_AC_SYSTEM_ERROR    0x0202
 #define PPPoE_TAG_GENERIC_ERROR      0x0203
+
+#define PPPoE_VER_TYPE               0x11   /* version 1, type 1 (RFC 2516) */
+#define PPPoE_TAG_HEADER_LEN         4      /* tag type and length */
+#define PPPoE_TAG_MAX_HEX            32     /* bytes of binary tag shown */

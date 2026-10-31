@@ -69,7 +69,6 @@ extern int dump_link_layer; /* dump network link layer info (ethernet address ,.
  */
 void DecodeTokenRingPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 {
-    u_int32_t pkt_len;      /* suprisingly, the length of the packet */
     u_int32_t cap_len;      /* caplen value */
 
     TokenRingHdr * trptr; /* Token Ring Header structure pointer */ 
@@ -77,7 +76,6 @@ void DecodeTokenRingPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
     TRhdrRoutingControlField * rcfptr; /* Routing Control Field pointer */
 
     /* set the lengths we need */
-    pkt_len = pkthdr->len;  /* total packet length */
     cap_len = pkthdr->caplen;   /* captured packet length */
 
     if (dump_link_layer) { 
