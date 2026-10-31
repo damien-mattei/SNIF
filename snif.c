@@ -41,9 +41,9 @@
 #include "config.h"
 #endif
 
-/* hcreate_r works only when _GNU_SOURCE defined 
+/* hcreate_r and fopencookie work only when _GNU_SOURCE defined
  * and _GNU_SOURCE must be defined before all includes */
-#ifdef HAVE_HCREATE_R
+#if defined(HAVE_HCREATE_R) || defined(HAVE_FOPENCOOKIE)
 #define _GNU_SOURCE
 #endif
 
@@ -825,7 +825,13 @@ static const struct {
 
 static int symbols_utf8 = 0; /* the locale is in UTF-8 */
 
-static int symbol_color = -1; /* color of the last symbol of the packet */
+static int symbol_color = -1; /* color of the layer being shown, -1 out
+				* of the layers (header, dump, separator) */
+
+static int layer_detail = 0; /* the first line of the layer is ended */
+
+static FILE * terminal = NULL; /* the real standard output, under the
+				* stream that shades the layers */
 
 
 /*
@@ -843,21 +849,114 @@ void LayerSymbol(int color)
 {
   int i;
 
-  if (!show_symbols || (color == symbol_color)) {
+  if (color == symbol_color) {
     return;
   }
 
   for (i = 0; layer_symbol[i].utf8 != NULL; i++) {
     if (layer_symbol[i].color == color) {
-      symbol_color = color;
-      if (use_colors) { /* in the color of its layer, not bright */
-	NORMALMODE();
-	SETCOLORONLY(color);
+      symbol_color = color; /* a new layer, its first line */
+      layer_detail = 0;
+      if (show_symbols) {
+	if (use_colors) { /* in the color of its layer, not bright */
+	  NORMALMODE();
+	  SETCOLORONLY(color);
+	}
+	printf("%s ", symbols_utf8 ? layer_symbol[i].utf8 : layer_symbol[i].ascii);
       }
-      printf("%s ", symbols_utf8 ? layer_symbol[i].utf8 : layer_symbol[i].ascii);
       return;
     }
   }
+}
+
+
+/*
+ * Function: SetColor(int)
+ *
+ * Purpose: set a color: with 256 colors, the color of the layer being
+ *          shown is in the shade of its first line or of its details
+ *
+ * Arguments: color => the color
+ *
+ * Returns: void function
+ */
+void SetColor(int color)
+{
+  if (!use_colors) {
+    return;
+  }
+
+  if (IS_COLOR256(color) && colors256) {
+    printf("%c[38;5;%dm", 0x1B,
+	   ((color == symbol_color) && layer_detail) ? COLOR_DETAIL(color) : COLOR_MAIN(color));
+  }
+  else {
+    printf("%c[%dm", 0x1B, (color & 0xff) + 30);
+  }
+}
+
+
+#ifdef HAVE_FOPENCOOKIE
+/*
+ * Function: ShadeWrite(void *, const char *, size_t)
+ *
+ * Purpose: write the output of snif to the terminal: at the end of the
+ *          first line of a layer, go on in the shade of its details
+ *
+ * Arguments: cookie => unused
+ *            buf, size => the text written
+ *
+ * Returns: the size written
+ */
+static ssize_t ShadeWrite(void * cookie, const char * buf, size_t size)
+{
+  size_t start = 0, i;
+
+  (void) cookie;
+
+  for (i = 0; i < size; i++) {
+    if (buf[i] == '\n') {
+      fwrite(buf + start, 1, i + 1 - start, terminal);
+      start = i + 1;
+      if ((symbol_color != -1) && !layer_detail) {
+	layer_detail = 1;
+	fprintf(terminal, "%c[38;5;%dm", 0x1B, COLOR_DETAIL(symbol_color));
+      }
+    }
+  }
+
+  fwrite(buf + start, 1, size - start, terminal);
+
+  return size;
+}
+#endif
+
+
+/*
+ * Function: ShadeLayers(void)
+ *
+ * Purpose: put the stream that shades the layers over the standard
+ *          output, unbuffered to follow the lines as they are written
+ *
+ * Returns: void function
+ */
+static void ShadeLayers(void)
+{
+#ifdef HAVE_FOPENCOOKIE
+  cookie_io_functions_t shade = { NULL, ShadeWrite, NULL, NULL };
+  FILE * stream;
+
+  fflush(stdout);
+
+  stream = fopencookie(NULL, "w", shade);
+  if (stream == NULL) {
+    return; /* one shade by layer */
+  }
+
+  setvbuf(stream, NULL, _IONBF, 0);
+  terminal = stdout;
+  stdout = stream;
+#endif
 }
 
 
@@ -929,6 +1028,7 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
     /* the link layer decoders set their color only after the addresses
      * in bright, its symbol is shown here unless the layer is hidden */
     symbol_color = -1;
+    layer_detail = 0;
     if (dump_link_layer) {
       LayerSymbol(DATA_LINK_LAYER_COLOR);
     }
@@ -938,6 +1038,8 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     /* call the packet decoder */
     (*grinder) (pkthdr, pkt);
+
+    symbol_color = -1; /* out of the layers */
 
     if (dump_hex) {
       DumpHex(pkt, pkthdr->caplen);
@@ -1140,6 +1242,11 @@ void ParseCmdLine(int argc, char *argv[])
 
   /* go through the color macros for the colors or for the symbols */
   send_esc = use_colors || show_symbols;
+
+  /* two shades by layer need the 256 colors */
+  if (use_colors && colors256) {
+    ShadeLayers();
+  }
 
   if (show_symbols) {
     symbols_utf8 = LocaleIsUTF8();

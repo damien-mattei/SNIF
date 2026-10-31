@@ -17,17 +17,18 @@ common options:
 -8 : use only the 8 basic colors. By default, when the terminal says it
      knows the palette of 256 colors (TERM=xterm-256color, or COLORTERM
      set, as in xfce4-terminal, gnome-terminal, konsole), softer colors
-     are used (see color.h):
+     are used (see color.h), a shade for the first line of each layer
+     and a darker one for its details:
 
-     layer                       256 colors       8 colors
-     link (Ethernet, Wi-Fi...)   soft green       green
-     network (IP, IPv6, ARP)     golden yellow    yellow
-     ICMP, ICMPv6, IGMP          light red        red
-     TCP, SCTP                   turquoise        cyan
-     UDP                         cornflower blue  blue
-     applications                pale magenta     magenta
-     tunnels (GRE, VXLAN...)     orange           magenta
-     routing (OSPF, BGP...)      light purple     magenta
+     layer                       256 colors                  8 colors
+     link (Ethernet, Wi-Fi...)   soft green, grey green      green
+     network (IP, IPv6, ARP)     golden yellow, dark gold    yellow
+     ICMP, ICMPv6, IGMP          light red, brick red        red
+     TCP, SCTP                   turquoise, dark turquoise   cyan
+     UDP                         cornflower blue, steel blue blue
+     applications                pale magenta, orchid        magenta
+     tunnels (GRE, VXLAN...)     orange, dark orange         magenta
+     routing (OSPF, BGP...)      light purple, dark purple   magenta
 
 -S : show a symbol before the first line of each layer, which helps
      without colors (-s, or the output in a file): in UTF-8 when the

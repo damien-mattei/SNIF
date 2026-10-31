@@ -40,6 +40,8 @@ AC_CHECK_FUNCS([gethostbyaddr inet_ntoa memset socket])
 
 AC_CHECK_FUNC(hcreate_r, AC_DEFINE(HAVE_HCREATE_R,,[Define if have hcreate_r function]))
 
+AC_CHECK_FUNC(fopencookie, AC_DEFINE(HAVE_FOPENCOOKIE,,[Define if have fopencookie function]))
+
 AC_CHECK_FUNC(ether_ntoa, AC_DEFINE(HAVE_ETHER_NTOA,,[Define if have ether_ntoa function]))
 
 

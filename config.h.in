@@ -9,6 +9,9 @@
 /* Define if have ether_ntoa function */
 #undef HAVE_ETHER_NTOA
 
+/* Define if have fopencookie function */
+#undef HAVE_FOPENCOOKIE
+
 /* Define to 1 if you have the `gethostbyaddr' function. */
 #undef HAVE_GETHOSTBYADDR
 

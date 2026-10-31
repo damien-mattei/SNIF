@@ -4663,6 +4663,15 @@ printf "%s\n" "#define HAVE_HCREATE_R /**/" >>confdefs.h
 fi
 
 
+ac_fn_c_check_func "$LINENO" "fopencookie" "ac_cv_func_fopencookie"
+if test "x$ac_cv_func_fopencookie" = xyes
+then :
+
+printf "%s\n" "#define HAVE_FOPENCOOKIE /**/" >>confdefs.h
+
+fi
+
+
 ac_fn_c_check_func "$LINENO" "ether_ntoa" "ac_cv_func_ether_ntoa"
 if test "x$ac_cv_func_ether_ntoa" = xyes
 then :

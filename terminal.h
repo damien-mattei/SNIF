@@ -40,15 +40,21 @@
 #define	WHITE		7
 
 /* a color of the 256 colors palette (xterm, VTE, konsole...), with the
- * color of the 8 colors palette used when the terminal lacks it */
-#define COLOR256( n , fallback ) (0x10000 | ((n) << 8) | (fallback))
-#define IS_COLOR256( c ) ((c) & 0x10000)
+ * color of the 8 colors palette used when the terminal lacks it; a layer
+ * has two shades: n for its first line, detail for the other lines */
+#define COLORSHADES( n , detail , fallback ) (0x1000000 | ((detail) << 16) | ((n) << 8) | (fallback))
+#define COLOR256( n , fallback ) COLORSHADES( n , n , fallback )
+#define IS_COLOR256( c ) ((c) & 0x1000000)
+#define COLOR_MAIN( c ) (((c) >> 8) & 0xff)
+#define COLOR_DETAIL( c ) (((c) >> 16) & 0xff)
 
 extern int colors256; /* the terminal knows the 256 colors palette */
 
 extern int use_colors; /* send the colors and attributes (not with -s) */
 
 void LayerSymbol(int); /* show the symbol of the layer shown in a color (-S) */
+
+void SetColor(int); /* set a color, in the shade of the line of its layer */
 
 /* escape sequence of the foreground color c: 38;5;n in the palette
  * of 256 colors, 30 + color in the palette of 8 colors */
@@ -63,7 +69,7 @@ void LayerSymbol(int); /* show the symbol of the layer shown in a color (-S) */
 
 #define SETATTRIB( a ) ((void) (use_colors && printf("%c[%dm", 0x1B, a )))
 
-#define SETCOLORONLY( c ) ((void) (use_colors && printf("%c[%s%dm", 0x1B, COLORSEQ( c ) )))
+#define SETCOLORONLY( c ) SetColor( c )
 
 /* the color of a layer is set before its first line: the place of its
  * symbol (-S), which is shown even without colors */
