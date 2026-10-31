@@ -47,6 +47,8 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
+#include "dns.h" /* AppendText */
+
 #include "ethernet.h"
 #include "pppoe.h"
 
@@ -86,6 +88,7 @@ static void DecodePPPoETags(u_int8_t * ptr, u_int32_t len)
   u_int16_t type;   /* tag type */
   u_int16_t tlen;   /* tag length */
   u_int32_t i;
+  char text[4 * 255 + 1]; /* tag as printable text */
 
   while (len >= PPPoE_TAG_HEADER_LEN) {
 
@@ -124,9 +127,10 @@ static void DecodePPPoETags(u_int8_t * ptr, u_int32_t len)
       }
       else {
 	putchar('"');
-	for (i = 0; i < tlen; i++) {
-	  /* bytes of UTF-8 characters are shown as they are */
-	  putchar(((ptr[i] >= 32) && (ptr[i] != 127)) ? ptr[i] : '.');
+	/* UTF-8 shown, control characters escaped, by pieces of 255 bytes */
+	for (i = 0; i < tlen; i += 255) {
+	  AppendText(text, ptr + i, (tlen - i < 255) ? tlen - i : 255, "\"\\");
+	  printf("%s", text);
 	}
 	putchar('"');
       }

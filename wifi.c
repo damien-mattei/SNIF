@@ -32,6 +32,8 @@
 
 #include <pcap.h>
 
+#include <ctype.h> /* isalpha */
+
 #include <netinet/in.h>
 
 #include <search.h> /* added for hash tables */
@@ -44,6 +46,8 @@
 #include "llc.h"
 #include "ip.h"
 #include "snif.h" /* function names definitions */
+
+#include "dns.h" /* AppendText */
 
 #include "wifi.h"
 
@@ -257,6 +261,7 @@ static void DecodeWifiElements(u_int8_t * ptr, u_int32_t len, u_int16_t capab, i
   int wpa = 0;      /* WPA (v1) vendor element */
   int channel = 0;
   u_int32_t i;
+  char text[4 * 255 + 1]; /* SSID as printable text */
 
   while (len >= 2) {
 
@@ -276,12 +281,9 @@ static void DecodeWifiElements(u_int8_t * ptr, u_int32_t len, u_int16_t capab, i
       if (i == elen) { /* empty or zeros */
 	printf("%s", (elen == 0) ? "(broadcast or hidden)" : "(hidden)");
       }
-      else {
-	putchar('"');
-	for (i = 0; i < elen; i++) {
-	  putchar(((ptr[2 + i] >= 32) && (ptr[2 + i] != 127)) ? ptr[2 + i] : '.');
-	}
-	putchar('"');
+      else { /* UTF-8 shown, control characters escaped */
+	AppendText(text, ptr + 2, elen, "\"\\");
+	printf("\"%s\"", text);
       }
       break;
 
@@ -298,8 +300,11 @@ static void DecodeWifiElements(u_int8_t * ptr, u_int32_t len, u_int16_t capab, i
       break;
 
     case WLAN_EID_COUNTRY:
-      if (elen >= 2) {
+      if ((elen >= 2) && isalpha(ptr[2]) && isalpha(ptr[3])) {
 	printf("  country %c%c", ptr[2], ptr[3]);
+      }
+      else if (elen >= 2) {
+	printf("  country 0x%02x%02x", ptr[2], ptr[3]);
       }
       break;
 

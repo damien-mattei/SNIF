@@ -44,6 +44,8 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
+#include "dns.h" /* AppendText */
+
 #include "eap.h"
 
 
@@ -140,14 +142,17 @@ void DecodeEAP(u_int8_t * pkt, const u_int32_t len)
 	&& (elen > sizeof(EAPHdr))) {
 
       u_int8_t type = pkt[sizeof(EAPHdr)];
+      char text[4 * 255 + 1];
 
       printf("  %s", EAPTypeName(type));
 
       /* the identity is sent in clear by the station */
       if ((type == EAP_TYPE_IDENTITY) && (elen > sizeof(EAPHdr) + 1)) {
 	printf(": \"");
-	for (i = sizeof(EAPHdr) + 1; i < elen; i++) {
-	  putchar(((pkt[i] >= 32) && (pkt[i] != 127)) ? pkt[i] : '.');
+	/* UTF-8 shown, control characters escaped, by pieces of 255 bytes */
+	for (i = sizeof(EAPHdr) + 1; i < elen; i += 255) {
+	  AppendText(text, pkt + i, (elen - i < 255) ? elen - i : 255, "\"\\");
+	  printf("%s", text);
 	}
 	printf("\"");
       }
