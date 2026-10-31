@@ -45,6 +45,10 @@
 
 #include "ip.h"
 
+#include "ipv6.h" /* IP_PROTO_AH, IP_PROTO_ESP */
+
+#include "iproto.h"
+
 #include "snif.h" /* function names definitions */
 
 
@@ -229,6 +233,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
   u_int32_t ip_len;       /* length from the start of the ip hdr to the
 			   * pkt end */
+  u_int8_t proto;         /* upper layer protocol */
   u_int32_t hlen;             /* ip header length */
   u_int16_t csum;             /* checksum */
   u_int16_t frag_offset;  /* fragment offset number */
@@ -956,7 +961,26 @@ Specification
       
     }
 
-    switch(iptr->ip_proto)
+    proto = iptr->ip_proto;
+
+    /* an authentication header may come before the upper layer */
+    while (proto == IP_PROTO_AH) {
+
+      if ((ip_len < 12) || (ip_len < (u_int32_t) (pkt[hlen + 1] + 2) * 4)) {
+	printf("Truncated Authentication Header (%u bytes)\n", ip_len);
+	return;
+      }
+
+      printf("Authentication Header SPI: 0x%08X Seq: %u\n",
+	     ((u_int32_t) pkt[hlen + 4] << 24) | (pkt[hlen + 5] << 16) | (pkt[hlen + 6] << 8) | pkt[hlen + 7],
+	     ((u_int32_t) pkt[hlen + 8] << 24) | (pkt[hlen + 9] << 16) | (pkt[hlen + 10] << 8) | pkt[hlen + 11]);
+
+      proto = pkt[hlen];
+      ip_len -= (pkt[hlen + 1] + 2) * 4;
+      hlen += (pkt[hlen + 1] + 2) * 4;
+    }
+
+    switch(proto)
 
       {
 
@@ -997,8 +1021,19 @@ Specification
 	DecodeGRE(pkt + hlen, ip_len, iptr);
 	return;
 
+      case IP_PROTO_ESP:
+
+	if (ip_len < 8) {
+	  printf("Truncated Encapsulating Security Payload (%u bytes)\n", ip_len);
+	  return;
+	}
+	printf("Encapsulating Security Payload SPI: 0x%08X Seq: %u (encrypted payload)\n",
+	       ((u_int32_t) pkt[hlen] << 24) | (pkt[hlen + 1] << 16) | (pkt[hlen + 2] << 8) | pkt[hlen + 3],
+	       ((u_int32_t) pkt[hlen + 4] << 24) | (pkt[hlen + 5] << 16) | (pkt[hlen + 6] << 8) | pkt[hlen + 7]);
+	return;
+
       default:
-	printf("Unknown network protocol: code %d\n",iptr->ip_proto);
+	DecodeIPProtocol(proto, pkt + hlen, ip_len, 0);
 	return;
       }
     

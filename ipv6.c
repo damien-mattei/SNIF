@@ -48,6 +48,8 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
+#include "iproto.h"
+
 #include "ipv6.h"
 
 extern int send_esc; /* send escape sequence to terminal
@@ -477,7 +479,7 @@ void DecodeIPV6(u_int8_t *pkt, u_int32_t len,struct pcap_pkthdr * pkthdr)
       return;
 
     default:
-      printf("Unknown next header: code %d\n", nxt);
+      DecodeIPProtocol(nxt, pkt + offset, end - offset, 1);
       return;
     }
 

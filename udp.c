@@ -60,6 +60,8 @@
 
 #include "quic.h"
 
+#include "routing.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -198,6 +200,18 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == QUIC_PORT) || (dp == QUIC_PORT) || (sp == QUIC_PORT_DOQ) || (dp == QUIC_PORT_DOQ)) {
       DecodeQUIC(data, dsize);
+    }
+    else if ((sp == RIP_PORT) && (dp == RIP_PORT)) {
+      DecodeRIP(data, dsize);
+    }
+    else if ((sp == RIPNG_PORT) && (dp == RIPNG_PORT)) {
+      DecodeRIPng(data, dsize);
+    }
+    else if ((sp == HSRP_PORT) || (dp == HSRP_PORT) || (sp == HSRP6_PORT) || (dp == HSRP6_PORT)) {
+      DecodeHSRP(data, dsize);
+    }
+    else if ((dp == BFD_PORT) || (dp == BFD_MULTIHOP_PORT)) {
+      DecodeBFD(data, dsize);
     }
 }
 

@@ -119,7 +119,8 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
 	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
 	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
-	mpls.$(OBJEXT) gre.$(OBJEXT)
+	mpls.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
+	gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -144,16 +145,16 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
-	./$(DEPDIR)/ip.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
-	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po ./$(DEPDIR)/mpls.Po \
-	./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
+	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
+	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
+	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
 	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
-	./$(DEPDIR)/raw.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
-	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
-	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
-	./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
-	./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
+	./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po ./$(DEPDIR)/slip.Po \
+	./$(DEPDIR)/sll.Po ./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po \
+	./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po \
+	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po \
+	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -383,6 +384,8 @@ quic.c quic.h \
 discovery.c discovery.h \
 slow.c slow.h \
 mpls.c mpls.h \
+iproto.c iproto.h \
+routing.c routing.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -522,6 +525,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/icmp6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/igmp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ip.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iproto.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/llc.Po@am__quote@ # am--include-marker
@@ -535,6 +539,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppserial.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quic.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/raw.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/routing.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sll.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slow.Po@am__quote@ # am--include-marker
@@ -880,6 +885,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/icmp6.Po
 	-rm -f ./$(DEPDIR)/igmp.Po
 	-rm -f ./$(DEPDIR)/ip.Po
+	-rm -f ./$(DEPDIR)/iproto.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
@@ -893,6 +899,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/pppserial.Po
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
+	-rm -f ./$(DEPDIR)/routing.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po
 	-rm -f ./$(DEPDIR)/slow.Po
@@ -970,6 +977,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/icmp6.Po
 	-rm -f ./$(DEPDIR)/igmp.Po
 	-rm -f ./$(DEPDIR)/ip.Po
+	-rm -f ./$(DEPDIR)/iproto.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
@@ -983,6 +991,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/pppserial.Po
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
+	-rm -f ./$(DEPDIR)/routing.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po
 	-rm -f ./$(DEPDIR)/slow.Po

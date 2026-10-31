@@ -55,6 +55,8 @@
 
 #include "tls.h"
 
+#include "routing.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -377,6 +379,9 @@ static void DecodeTCPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int3
 {
   if ((sp == DNS_PORT) || (dp == DNS_PORT)) {
     DecodeDNSOverTCP(data, dsize);
+  }
+  else if ((sp == BGP_PORT) || (dp == BGP_PORT)) {
+    DecodeBGP(data, dsize);
   }
   else {
     /* on the other ports, only the hello messages are recognized */

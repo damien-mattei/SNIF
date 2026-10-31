@@ -49,6 +49,8 @@ quic.c quic.h \
 discovery.c discovery.h \
 slow.c slow.h \
 mpls.c mpls.h \
+iproto.c iproto.h \
+routing.c routing.h \
 gre.c gre.h \
 terminal.h \
 color.h
