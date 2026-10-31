@@ -1445,13 +1445,8 @@ int main(int argc, char **argv) {
     ShowProgramName(); 
     ShowAuthorInfo();
 
-    /* reading a pcap file does not require root privileges */
-    if ((pcap_infile == NULL) && (getuid() != 0)) { /* if we are not root mode */
-      
-      fprintf(stderr,"Sorry, this program must be run by root.\n");
-      CleanExit(1);
-
-    }
+    /* no root check here: live capture needs root or the capture
+     * capabilities (setcap), pcap_open_live() tells us if we lack them */
 
     /***********************************************************************
      * this part only concern if program is launch from
@@ -1864,6 +1859,11 @@ int main(int argc, char **argv) {
       if(descr == NULL)
         {
           fprintf(stderr,"pcap_open_live(): %s\n",errbuf);
+          if (getuid() != 0) { /* most likely a permission problem */
+            fprintf(stderr,"Live capture needs root privileges: run snif with sudo,\n"
+                    "or give it the capture capabilities once after each build:\n"
+                    "  sudo setcap cap_net_raw,cap_net_admin=eip ./snif\n");
+          }
           CleanExit(1);
         }
     }

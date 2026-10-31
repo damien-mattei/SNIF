@@ -66,32 +66,27 @@ extern int resolv_ip; /* resolve or not IP address in hostname */
 /* decoding of copied flag,class,option number */
 void decodeIpOptionType(u_int8_t type) {
 
-	  if ( COPIED_FLAG( type ) ) {
-	    printf("  Copied Flag: copied (option is copied into all fragments on fragmentation)\n");
+	  /* details only in verbose mode, one line */
+	  if (verb <= 0) {
+	    return;
 	  }
-	  else {
-	    printf("  Copied Flag: NOT copied\n");
-	  }
-	  
+
+	  printf("    %s, class: ", COPIED_FLAG( type ) ? "copied into all fragments" : "not copied");
+
 	  switch OPTION_CLASS( type )
 	    {
 	    case 0:
-	      printf("  Option class: control\n");
-	      break;
-	    case 1:
-	    case 3:
-	      printf("  Option class: reserved for future use\n");
+	      printf("control");
 	      break;
 	    case 2:
-	      printf("  Option class: debugging and measurement\n");
+	      printf("debugging and measurement");
 	      break;
-	    default:
+	    default: /* 1 and 3 */
+	      printf("reserved for future use");
 	      break;
 	    }
-	  
-	  if (verb > 0) {
-	    printf("  Option number: %i\n",OPTION_NUMBER( type ));
-	  }
+
+	  printf(", number: %i\n",OPTION_NUMBER( type ));
 
 }
 
@@ -443,7 +438,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
     
     /* test for IP options */
     if (hlen > IP_HEADER_LEN_MINI) {
-      printf("\nDecoding Options:\n\n");
+      printf("IP options:\n");
       
       ip_options_len = hlen - IP_HEADER_LEN_MINI;
       option_ptr = pkt + IP_HEADER_LEN_MINI; /* start */
@@ -458,7 +453,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	  /* every other option has a length byte, check it before using it */
 	  if ((option_ptr + 1 >= end_ptr) || (*(option_ptr + 1) < 2)
 	      || (option_ptr + *(option_ptr + 1) > end_ptr)) {
-	    printf("\n  Option 0x%02X with bad length, stop decoding options.\n", type);
+	    printf("  Option 0x%02X with bad length, stop decoding options.\n", type);
 	    break;
 	  }
 	}
@@ -468,29 +463,34 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	case IPOPT_RTRALT:
 
-	  printf("\n  Router Alert.\n");
-	  decodeIpOptionType(type);
+	  printf("  Router Alert");
 	  length = *(option_ptr + 1);
 	  if (length == 4) {
 	    u_int16_t value = (*(option_ptr + 2) << 8) | *(option_ptr + 3);
-	    printf("    %s (%d)\n", (value == 0) ? "Router shall examine packet" : "Reserved value", value);
+	    printf(": %s (%d)", (value == 0) ? "router shall examine packet" : "reserved value", value);
 	  }
+	  printf("\n");
+	  decodeIpOptionType(type);
 	  byte_skip = length;
 
 	  break;
 
 	case IPOPT_NOP: /* No OPeration */
 
-	  printf("\n  No Operation.\n");
-	  decodeIpOptionType(type);
+	  if (verb > 0) { /* padding, not worth a line by default */
+	    printf("  No Operation\n");
+	    decodeIpOptionType(type);
+	  }
 	  byte_skip = 1; /* we have a single byte option */
 
 	  break;
 
 	case IPOPT_EOL: /* End of Option List */
 
-	  printf("\n  End of Option List.\n");
-	  decodeIpOptionType(type);
+	  if (verb > 0) {
+	    printf("  End of Option List\n");
+	    decodeIpOptionType(type);
+	  }
 	  byte_skip = 1; /* we have a single byte option */
 	  /* if we hit an EOL, we're done */
 	  done = 1;
@@ -499,7 +499,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	case IPOPT_RR:
 
-	  printf("\n  Record Route.\n");
+	  printf("  Record Route\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  pointer = *(option_ptr + 2);
@@ -529,7 +529,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	  u_int8_t flag;
 	  u_int32_t timestamp=0; /* Internet Timestamp */
 
-	  printf("\n  Internet Timestamp.\n");
+	  printf("  Internet Timestamp\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  pointer = *(option_ptr + 2);
@@ -574,7 +574,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	      while ((ptr_record + 8) <= end_record) { /* still in valid record zone */
 		/* print IP */
 		/* printf("%02X.%02X.%02X.%02X|%02X.%02X.%02X.%02X\n",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3),*(ptr_record+4),*(ptr_record+5),*(ptr_record+6),*(ptr_record+7)); */
-		printf("    %d.%d.%d.%d\t",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3));
+		printf("    %d.%d.%d.%d  ",*ptr_record,*(ptr_record+1),*(ptr_record+2),*(ptr_record+3));
 		/* printf("ptr_record:%d\t end_record:%d\n",ptr_record,end_record); */
 		ptr_record += 4; /* 4 bytes: size of an IP address */
 		/* timestamp = ntohl(*ptr_record); */
@@ -583,7 +583,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 		  | ((u_int32_t) (*(ptr_record+2)) << 8)
 		  | ((u_int32_t) (*(ptr_record+3)));
 		/* high bit set: not in milliseconds since midnight UT */
-		printf("    %u%s%s\n",timestamp & 0x7FFFFFFF,
+		printf("%u%s%s\n",timestamp & 0x7FFFFFFF,
 		       (timestamp & 0x80000000) ? " (non-standard value)" : "",
 		       (ptr_record - 4 - option_ptr + 1 >= pointer) ? " (empty)" : ""); /* print timestamp */
 		ptr_record += 4; /* 4 bytes: size of internet timestamp */
@@ -593,8 +593,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	    default:
 
-	      printf("    Unknown flag.\n");
-	      decodeIpOptionType(type);
+	      printf("    Unknown flag %d\n", flag);
 
 	      break;
 
@@ -606,7 +605,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	  
 	case IPOPT_SECURITY:
 
-	  printf("\n  Security.\n");
+	  printf("  Security\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  decodeIpSecurity(option_ptr, length);
@@ -616,7 +615,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	case IPOPT_EXTSEC:
 
-	  printf("\n  Extended Security (RFC 1108).\n");
+	  printf("  Extended Security (RFC 1108)\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  if (length >= 3) {
@@ -629,7 +628,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 	case IPOPT_CIPSO:
 
-	  printf("\n  Commercial IP Security Option (CIPSO).\n");
+	  printf("  Commercial IP Security Option (CIPSO)\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  if (length >= 6) {
@@ -767,7 +766,7 @@ September 1981
 	case IPOPT_LSRR:
 	case IPOPT_LSRR_E:
 
-	  printf("\n  Loose Source Routing.\n");
+	  printf("  Loose Source Routing\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  pointer = *(option_ptr + 2);
@@ -780,7 +779,6 @@ September 1981
 
 	  else {
 
-	    printf("\n");
 	    local_ptr = 0; /* offset in the route data */
 	    ptr_ip = option_ptr + 3 + local_ptr;  /* 3 bytes (type,length,pointer) */
 	    /* end_record = option_ptr + pointer; */ /* end of records */
@@ -884,7 +882,7 @@ Specification
 
 	case IPOPT_SSRR:
 
-	  printf("\n  Strict Source Routing.\n");
+	  printf("  Strict Source Routing\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  pointer = *(option_ptr + 2);
@@ -898,7 +896,6 @@ Specification
 
 	  else {
 
-	    printf("\n");
 	    local_ptr = 0; /* offset in the route data */
 	    ptr_ip = option_ptr + 3 + local_ptr;  /* 3 bytes (type,length,pointer) */
 	    /* end_record = option_ptr + pointer; */ /* end of records */
@@ -931,7 +928,7 @@ Specification
 	
 	case IPOPT_SATID:
 
-	  printf("\n  Stream Identifier.\n");
+	  printf("  Stream Identifier\n");
 	  decodeIpOptionType(type);
 	  length = *(option_ptr + 1);
 	  if (length == 4) {
@@ -944,8 +941,8 @@ Specification
 
 	default:
 
-	  printf("\n  Unknown option.\n");
 	  length = *(option_ptr + 1);
+	  printf("  Unknown option 0x%02X (%d bytes)\n", type, length);
 	  byte_skip = length;
 
 	  break;

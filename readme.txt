@@ -17,6 +17,13 @@ common options:
 
 snif -h gives the list of all the options.
 
+live capture needs root privileges (sudo ./snif), or the capture
+capabilities given to the program once after each build:
+
+sudo setcap cap_net_raw,cap_net_admin=eip ./snif
+
+reading a pcap file with -f needs no privileges.
+
 
 compilation:
 
