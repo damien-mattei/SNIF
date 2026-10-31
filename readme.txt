@@ -12,6 +12,8 @@ common options:
 
 -f file : read the packets from a pcap (tcpdump) file instead of an interface
 
+-x : dump the packets in hexadecimal and ASCII
+
 -K : don't verify TCP and UDP checksums. Without -K, the checksums of the
      packets sent by us are not verified anyway: the network card computes
      them after the capture (checksum offloading). They are recognized by

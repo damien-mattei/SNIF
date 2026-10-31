@@ -755,6 +755,53 @@ void printResolvedIP6(struct in6_addr * addr) {
 
 
 
+/*
+ * Function: DumpHex(u_char *, u_int32_t)
+ *
+ * Purpose: dump the captured packet, 16 bytes a line: offset, bytes in
+ *          hexadecimal by pairs, then in ASCII (a dot for the bytes that
+ *          are not printable), as tcpdump -XX does
+ *
+ * Arguments: pkt => the packet
+ *            len => captured length
+ *
+ * Returns: void function
+ */
+void DumpHex(u_char * pkt, u_int32_t len)
+{
+  u_int32_t off, i;
+
+  if (send_esc) {
+    NORMALMODE();
+  }
+
+  for (off = 0; off < len; off += 16) {
+
+    printf("  0x%04x: ", off);
+
+    for (i = 0; i < 16; i++) {
+      if (i % 2 == 0) {
+	putchar(' ');
+      }
+      if (off + i < len) {
+	printf("%02x", pkt[off + i]);
+      }
+      else {
+	printf("  ");
+      }
+    }
+
+    printf("  ");
+
+    for (i = 0; (i < 16) && (off + i < len); i++) {
+      putchar(((pkt[off + i] >= 0x20) && (pkt[off + i] < 0x7F)) ? pkt[off + i] : '.');
+    }
+
+    putchar('\n');
+  }
+}
+
+
 /* ProcessPacket 
  * works on data link layer (layer 2)
  */
@@ -800,6 +847,10 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     /* call the packet decoder */
     (*grinder) (pkthdr, pkt);
+
+    if (dump_hex) {
+      DumpHex(pkt, pkthdr->caplen);
+    }
     
     
     if (send_esc) {
@@ -834,7 +885,7 @@ void ParseCmdLine(int argc, char *argv[])
   int ch;                         /* storage var for getopt info */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargK")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargKx")) != EOF)
     {
       switch(ch) {
 
@@ -859,6 +910,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -g : port number greater or equal to 1024 will be displayed in text\n");
 	printf(" -r : resolve IP address in hostname\n");
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
+	printf(" -x : dump the packets in hexadecimal and ASCII\n");
 	printf("\n filter expression : only the packets matching it are shown, in the\n");
 	printf(" syntax of tcpdump (see man pcap-filter), ex: snif -i eth0 port 53\n");
 	CleanExit(0);
@@ -947,6 +999,10 @@ void ParseCmdLine(int argc, char *argv[])
 
       case 'K':
 	check_cksum = 0;
+	break;
+
+      case 'x':
+	dump_hex = 1;
 	break;
 
       }
