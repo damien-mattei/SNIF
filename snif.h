@@ -91,6 +91,10 @@ void SigQuitHandler(int); /* Signal Handlers for SIGQUIT */
 void SigWinChHandler(int); /* handler for window size change */
 
 #define PACKETS_READ_TIMEOUT 500 /* used in the pcap lib */
+#ifndef PKGDATADIR /* given by the Makefile */
+#define PKGDATADIR "/usr/local/share/snif"
+#endif
+
 #define SNAPLEN 262144 /* bytes captured per packet, as tcpdump (BUFSIZ cut the big ones) */
 
 

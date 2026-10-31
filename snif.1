@@ -1,0 +1,180 @@
+'\" t
+.\" snif manual page
+.\" Copyright (C) 2003  Damien MATTEI <Damien.MATTEI@gmail.com>
+.\" This program is free software, under the GNU General Public License
+.\" version 2 or any later version.
+.TH SNIF 1 "October 2026" "snif 1.0" "User Commands"
+.SH NAME
+snif \- Sniff Network Interface's Frames, a packet decoder with one color by layer
+.SH SYNOPSIS
+.B snif
+[\fB\-hvpedtsSnlargKx8\fR]
+[\fB\-i\fR \fIinterface\fR]
+[\fB\-f\fR \fIfile\fR]
+[\fB\-c\fR \fIcount\fR]
+[\fIfilter expression\fR]
+.SH DESCRIPTION
+.B snif
+captures the packets of a network interface, or reads them from a pcap
+file written by
+.BR tcpdump (1)
+or Wireshark, and shows them layer after layer, from the link layer to
+the application, each layer in its own color.
+.PP
+It only decodes and displays: it does not reassemble the TCP streams
+(a message cut over several segments is decoded only in its first
+segment) and does no traffic analysis.
+.SH OPTIONS
+.TP
+.B \-h
+Show the help and exit.
+.TP
+.BI \-i " interface"
+Capture on this interface, for instance
+.BR eth0 ,
+.B wlp0s20f3
+or
+.B any
+(all the interfaces, as a Linux cooked capture).
+.TP
+.BI \-f " file"
+Read the packets from a pcap file instead of an interface.
+.TP
+.BI \-c " count"
+Exit after
+.I count
+packets.
+.TP
+.B \-v
+Verbose mode: all the fields of the headers, the options, the flags.
+.TP
+.B \-p
+Do not put the interface into promiscuous mode.
+.TP
+.B \-e
+Do not show the vendor of the Ethernet cards.
+.TP
+.B \-d
+Do not show the link layer (Ethernet addresses...).
+.TP
+.B \-t
+Do not show the time stamps.
+.TP
+.B \-s
+No escape sequences: no colors.
+.TP
+.B \-S
+Show a symbol before the first line of each layer, with or without the
+colors: in UTF-8 when the locale is, in ASCII otherwise.
+.TP
+.B \-8
+Use only the 8 basic colors, even if the terminal knows the palette of
+256 colors.
+.TP
+.B \-n
+Print an empty line between the packets (useful without colors).
+.TP
+.B \-l
+Show the TCP and UDP ports as numbers only, without the service name.
+.TP
+.B \-g
+Also name the ports greater than or equal to 1024.
+.TP
+.B \-a
+Do not load the tables of ports and vendors (saves memory).
+.TP
+.B \-r
+Resolve the IP addresses into host names.
+.TP
+.B \-K
+Do not verify the TCP and UDP checksums. Without
+.BR \-K ,
+the checksums of the packets sent by the machine itself are not verified
+anyway: the network card computes them after the capture (checksum
+offloading).
+.TP
+.B \-x
+Dump each packet in hexadecimal and ASCII after its decoding.
+.SH FILTER EXPRESSION
+The arguments following the options make a capture filter, in the syntax
+of
+.BR tcpdump (1),
+described in
+.BR pcap-filter (7):
+only the packets matching it are shown.
+.SH COLORS
+When the terminal says it knows the palette of 256 colors
+.RB ( TERM
+ending in
+.BR \-256color ,
+or
+.B COLORTERM
+set, as in xfce4\-terminal, gnome\-terminal or konsole), each layer has
+two shades: one for its first line, a darker one for its details.
+Otherwise, and with
+.BR \-8 ,
+the 8 basic colors are used.
+.PP
+.TS
+l l l l.
+Layer	256 colors	8 colors	\-S (ASCII)
+link (Ethernet, Wi\-Fi...)	soft green	green	#
+network (IP, IPv6, ARP)	golden yellow	yellow	@
+ICMP, ICMPv6, IGMP	light red	red	!
+TCP, SCTP	turquoise	cyan	>
+UDP	cornflower blue	blue	>
+applications	pale magenta	magenta	*
+tunnels (GRE, VXLAN...)	orange	magenta	\&=
+routing (OSPF, BGP...)	light purple	magenta	+
+.TE
+.PP
+In UTF-8, the symbols are \[u25AA] \[u25C6] \[u2716] \[u25B8] \[u273B] \[u25CE] \[u2726] in the same order
+(TCP and UDP share the same one).
+The colors are defined in
+.B color.h
+in the sources.
+.SH LIVE CAPTURE
+Capturing on an interface needs the capture privileges: run
+.B snif
+with
+.BR sudo ,
+or give them to the binary once (again after each build):
+.PP
+.RS
+sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/sbin/snif
+.RE
+.PP
+Reading a file needs no privilege.
+.SH FILES
+.TP
+.I /usr/local/share/snif/portnumbers.dat
+Names of the TCP and UDP ports.
+.TP
+.I /usr/local/share/snif/ieee_ethercodes.dat
+Vendors of the Ethernet cards (IEEE registries).
+.PP
+When they are not installed,
+.B snif
+reads them in
+.I ./var
+(run from the source directory).
+.SH EXAMPLES
+.TP
+.B snif \-i eth0 port 53
+Show the DNS packets of eth0.
+.TP
+.B snif \-v \-f capture.pcap
+Decode a capture file in verbose mode.
+.TP
+.B snif \-s \-S \-f capture.pcap > decoded.txt
+Write the decoding without colors, with the symbols of the layers.
+.TP
+.B snif \-i any \-x host 192.168.1.1
+Show the packets to or from 192.168.1.1 on all the interfaces, with
+their hexadecimal dump.
+.SH SEE ALSO
+.BR tcpdump (1),
+.BR pcap-filter (7),
+.BR setcap (8)
+.SH AUTHOR
+Damien MATTEI <Damien.MATTEI@gmail.com>, Nice, France.

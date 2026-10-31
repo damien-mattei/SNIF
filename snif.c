@@ -1872,7 +1872,7 @@ int main(int argc, char **argv) {
     if (text_port) { /* will display TCP/UDP ports in text */
 
       /* test if file exist */
-      char * portsfile1 = "/usr/local/share/portnumbers.dat";
+      char * portsfile1 = PKGDATADIR "/portnumbers.dat";
       char * portsfile2 = "./var/portnumbers.dat";
       int ff1 = access (portsfile1, R_OK); /* check if read is possible */
       int ff2 = access (portsfile2, R_OK);
@@ -1905,7 +1905,7 @@ int main(int argc, char **argv) {
     if (show_eth_vend) { /* will display Ethernet vendor names */
 
       /* test if file exist */
-      char * etherfile1 = "/usr/local/share/ieee_ethercodes.dat";
+      char * etherfile1 = PKGDATADIR "/ieee_ethercodes.dat";
       char * etherfile2 = "./var/ieee_ethercodes.dat";
       int ff1 = access (etherfile1, R_OK); /* check if read is possible */
       int ff2 = access (etherfile2, R_OK);
@@ -1950,7 +1950,7 @@ int main(int argc, char **argv) {
 
     if (text_port) { /* will display TCP/UDP ports in text */
       /* test if file exist */
-	char * portsfile1 = "/usr/local/share/portnumbers.dat";
+	char * portsfile1 = PKGDATADIR "/portnumbers.dat";
 	char * portsfile2 = "./var/portnumbers.dat";
 	int ff1 = access (portsfile1, R_OK); /* check if read is possible */
 	int ff2 = access (portsfile2, R_OK);
@@ -1961,7 +1961,7 @@ int main(int argc, char **argv) {
 	  text_port = 0;
 	}
 	else { /* then we parse the right file */
-	  (! ff1) ? InitHashTable("/usr/local/share/portnumbers.dat","P") : InitHashTable("./var/portnumbers.dat","P");
+	  (! ff1) ? InitHashTable(PKGDATADIR "/portnumbers.dat","P") : InitHashTable("./var/portnumbers.dat","P");
 	}
     }
 
@@ -1977,7 +1977,7 @@ int main(int argc, char **argv) {
 
       /* test if file exist */
       int rv,nel;
-      char * portsfile1 = "/usr/local/share/portnumbers.dat";
+      char * portsfile1 = PKGDATADIR "/portnumbers.dat";
       char * portsfile2 = "./var/portnumbers.dat";
       int ff1 = access (portsfile1, R_OK); /* check if read is possible */
       int ff2 = access (portsfile2, R_OK);
@@ -2029,7 +2029,7 @@ int main(int argc, char **argv) {
 
       /* test if file exist */
       int rv,nel;
-      char * etherfile1 = "/usr/local/share/ieee_ethercodes.dat";
+      char * etherfile1 = PKGDATADIR "/ieee_ethercodes.dat";
       char * etherfile2 = "./var/ieee_ethercodes.dat";
       int ff1 = access (etherfile1, R_OK); /* check if read is possible */
       int ff2 = access (etherfile2, R_OK);
@@ -2076,7 +2076,7 @@ int main(int argc, char **argv) {
 
     if (text_port) { /* will display TCP/UDP ports in text */
       /* test if file exist */
-	char * portsfile1 = "/usr/local/share/portnumbers.dat";
+	char * portsfile1 = PKGDATADIR "/portnumbers.dat";
 	char * portsfile2 = "./var/portnumbers.dat";
 	int ff1 = access (portsfile1, R_OK); /* check if read is possible */
 	int ff2 = access (portsfile2, R_OK);
@@ -2087,7 +2087,7 @@ int main(int argc, char **argv) {
 	  text_port = 0;
 	}
 	else { /* then we parse the right file */
-	  (! ff1) ? InitHashTable("/usr/local/share/portnumbers.dat",&htab_ports) : InitHashTable("./var/portnumbers.dat",&htab_ports);
+	  (! ff1) ? InitHashTable(PKGDATADIR "/portnumbers.dat",&htab_ports) : InitHashTable("./var/portnumbers.dat",&htab_ports);
 	}
     }
 
@@ -2477,7 +2477,7 @@ int main(int argc, char **argv) {
      * ethernet inside a tunnel, neighbor discovery options...) */
     if (show_eth_vend) { /* will show ethernet vendor codes */
       /* test if file exist */
-      char * etherfile1 = "/usr/local/share/ieee_ethercodes.dat";
+      char * etherfile1 = PKGDATADIR "/ieee_ethercodes.dat";
       char * etherfile2 = "./var/ieee_ethercodes.dat";
       int ff1 = access (etherfile1, R_OK); /* check if read is possible */
       int ff2 = access (etherfile2, R_OK);
@@ -2491,11 +2491,11 @@ int main(int argc, char **argv) {
 
 #ifndef HAVE_HCREATE_R
 
-	(! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat","E") : InitHashTable("./var/ieee_ethercodes.dat","E");
+	(! ff1) ? InitHashTable(PKGDATADIR "/ieee_ethercodes.dat","E") : InitHashTable("./var/ieee_ethercodes.dat","E");
 
 #else
 
-	(! ff1) ? InitHashTable("/usr/local/share/ieee_ethercodes.dat",&htab_ethernet) : InitHashTable("./var/ieee_ethercodes.dat",&htab_ethernet);
+	(! ff1) ? InitHashTable(PKGDATADIR "/ieee_ethercodes.dat",&htab_ethernet) : InitHashTable("./var/ieee_ethercodes.dat",&htab_ethernet);
 
 #endif
 

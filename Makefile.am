@@ -62,12 +62,17 @@ terminal.h \
 color.h
 
 
-#AM_CPPFLAGS = -I/usr/include/pcap
+# where the data files are installed (/usr/local/share/snif by default)
+AM_CPPFLAGS = -DPKGDATADIR=\"$(pkgdatadir)\"
 
 # -lpcap is added to LIBS by configure
 
-# data files read by snif, installed in $(datadir) (/usr/local/share)
-dist_data_DATA = var/ieee_ethercodes.dat var/portnumbers.dat
+# data files read by snif, installed in $(pkgdatadir), or read in ./var
+# when snif is run from the source directory
+dist_pkgdata_DATA = var/ieee_ethercodes.dat var/portnumbers.dat
+
+# manual page: man snif
+dist_man_MANS = snif.1
 
 # scripts to update the data files
 EXTRA_DIST = contrib/readme contrib/updatevar.sh \
