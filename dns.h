@@ -128,4 +128,6 @@ typedef struct _DNSRR
 #define DNS_TXT_SHOWN       200     /* bytes of text shown without -v */
 
 void DecodeDNS(u_int8_t *, u_int32_t, int); /* Decode a DNS, mDNS or LLMNR message */
+char * AppendText(char *, const u_int8_t *, u_int32_t, const char *); /* packet bytes as printable text */
+u_int32_t GetDNSName(const u_int8_t *, u_int32_t, u_int32_t, char *); /* read a domain name, 0 if malformed */
 void DecodeDNSOverTCP(u_int8_t *, u_int32_t); /* Decode DNS messages carried by TCP */

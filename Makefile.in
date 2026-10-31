@@ -117,7 +117,7 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
 	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
-	gre.$(OBJEXT)
+	dhcp.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -136,9 +136,9 @@ DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
-	./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po ./$(DEPDIR)/enc.Po \
-	./$(DEPDIR)/ethernet.Po ./$(DEPDIR)/ethlb.Po \
-	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
+	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po \
+	./$(DEPDIR)/enc.Po ./$(DEPDIR)/ethernet.Po \
+	./$(DEPDIR)/ethlb.Po ./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
@@ -371,6 +371,7 @@ stp.c stp.h \
 tcp.c tcp.h \
 udp.c udp.h \
 dns.c dns.h \
+dhcp.c dhcp.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -495,6 +496,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chdlc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eap.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/enc.Po@am__quote@ # am--include-marker
@@ -845,6 +847,7 @@ distclean: distclean-am
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
+	-rm -f ./$(DEPDIR)/dhcp.Po
 	-rm -f ./$(DEPDIR)/dns.Po
 	-rm -f ./$(DEPDIR)/eap.Po
 	-rm -f ./$(DEPDIR)/enc.Po
@@ -927,6 +930,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -rf $(top_srcdir)/autom4te.cache
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
+	-rm -f ./$(DEPDIR)/dhcp.Po
 	-rm -f ./$(DEPDIR)/dns.Po
 	-rm -f ./$(DEPDIR)/eap.Po
 	-rm -f ./$(DEPDIR)/enc.Po

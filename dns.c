@@ -212,7 +212,7 @@ static int UTF8Length(const u_int8_t * s, u_int32_t n)
  *
  * Returns: the end of the text written
  */
-static char * AppendText(char * out, const u_int8_t * s, u_int32_t n, const char * special)
+char * AppendText(char * out, const u_int8_t * s, u_int32_t n, const char * special)
 {
   u_int32_t i = 0;
   int ulen;
@@ -255,7 +255,7 @@ static char * AppendText(char * out, const u_int8_t * s, u_int32_t n, const char
  * Returns: offset following the name, 0 if it is malformed
  *          (a name never ends at offset 0)
  */
-static u_int32_t GetDNSName(const u_int8_t * msg, u_int32_t len, u_int32_t off, char * name)
+u_int32_t GetDNSName(const u_int8_t * msg, u_int32_t len, u_int32_t off, char * name)
 {
   u_int32_t next = 0;     /* where the name ends, set by the first pointer */
   u_int32_t wire_len = 1; /* the final zero byte */

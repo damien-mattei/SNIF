@@ -52,6 +52,8 @@
 
 #include "dns.h"
 
+#include "dhcp.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -173,6 +175,14 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == LLMNR_PORT) || (dp == LLMNR_PORT)) {
       DecodeDNS(data, dsize, DNS_PROTO_LLMNR);
+    }
+    else if (((sp == BOOTPC_PORT) && (dp == BOOTPS_PORT)) || ((sp == BOOTPS_PORT) && (dp == BOOTPC_PORT))
+	     || ((sp == BOOTPS_PORT) && (dp == BOOTPS_PORT))) { /* between relays */
+      DecodeDHCP(data, dsize);
+    }
+    else if ((sp == DHCP6_CLIENT_PORT) || (dp == DHCP6_CLIENT_PORT)
+	     || (sp == DHCP6_SERVER_PORT) || (dp == DHCP6_SERVER_PORT)) {
+      DecodeDHCP6(data, dsize);
     }
 }
 
