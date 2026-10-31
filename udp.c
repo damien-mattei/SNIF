@@ -74,6 +74,8 @@
 
 #include "flow.h"
 
+#include "ldp.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -285,6 +287,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if (dp == WSD_PORT) {
       DecodeWSD(data, dsize);
+    }
+    else if ((sp == LDP_PORT) || (dp == LDP_PORT)) {
+      DecodeLDP(data, dsize);
     }
     else if (((sp == NETFLOW_PORT) || (dp == NETFLOW_PORT) || (dp == NETFLOW_PORT_ALT1) || (dp == NETFLOW_PORT_ALT2)
 	      || (sp == IPFIX_PORT) || (dp == IPFIX_PORT)) && IsNetFlow(data, dsize)) {
