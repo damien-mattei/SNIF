@@ -49,6 +49,7 @@ quic.c quic.h \
 discovery.c discovery.h \
 slow.c slow.h \
 mpls.c mpls.h \
+homeplug.c homeplug.h \
 iproto.c iproto.h \
 routing.c routing.h \
 tunnel.c tunnel.h \

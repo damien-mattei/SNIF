@@ -119,9 +119,9 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
 	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
 	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
-	mpls.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
-	tunnel.$(OBJEXT) vpn.$(OBJEXT) text.$(OBJEXT) \
-	services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
+	mpls.$(OBJEXT) homeplug.$(OBJEXT) iproto.$(OBJEXT) \
+	routing.$(OBJEXT) tunnel.$(OBJEXT) vpn.$(OBJEXT) \
+	text.$(OBJEXT) services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -143,7 +143,7 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/discovery.Po \
 	./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po ./$(DEPDIR)/enc.Po \
 	./$(DEPDIR)/ethernet.Po ./$(DEPDIR)/ethlb.Po \
-	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po \
+	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/gre.Po ./$(DEPDIR)/homeplug.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
@@ -389,6 +389,7 @@ quic.c quic.h \
 discovery.c discovery.h \
 slow.c slow.h \
 mpls.c mpls.h \
+homeplug.c homeplug.h \
 iproto.c iproto.h \
 routing.c routing.h \
 tunnel.c tunnel.h \
@@ -529,6 +530,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ethlb.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fddi.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/gre.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/homeplug.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/i4lciscoip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/i4lrawip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/icmp.Po@am__quote@ # am--include-marker
@@ -894,6 +896,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ethlb.Po
 	-rm -f ./$(DEPDIR)/fddi.Po
 	-rm -f ./$(DEPDIR)/gre.Po
+	-rm -f ./$(DEPDIR)/homeplug.Po
 	-rm -f ./$(DEPDIR)/i4lciscoip.Po
 	-rm -f ./$(DEPDIR)/i4lrawip.Po
 	-rm -f ./$(DEPDIR)/icmp.Po
@@ -991,6 +994,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ethlb.Po
 	-rm -f ./$(DEPDIR)/fddi.Po
 	-rm -f ./$(DEPDIR)/gre.Po
+	-rm -f ./$(DEPDIR)/homeplug.Po
 	-rm -f ./$(DEPDIR)/i4lciscoip.Po
 	-rm -f ./$(DEPDIR)/i4lrawip.Po
 	-rm -f ./$(DEPDIR)/icmp.Po

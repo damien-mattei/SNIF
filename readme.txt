@@ -28,7 +28,8 @@ link layer   : Ethernet (vendor of the cards), 802.3/LLC/SNAP, VLAN 802.1Q
                and QinQ, PPPoE, PPP, Linux cooked captures (SLL, SLL2),
                Wi-Fi 802.11 and radiotap, EAPOL/EAP, Token Ring, FDDI,
                Spanning Tree (STP, RSTP, MSTP, PVST+), LLDP, CDP, LACP and
-               the slow protocols, MPLS, ARP/RARP
+               the slow protocols, MPLS, HomePlug 1.0 and AV (power line),
+               ARP/RARP
 network      : IPv4 (options), IPv6 (extension headers), ICMP, ICMPv6
                (neighbor discovery, MLD), IGMP, IPX (RIP, SAP), AH, ESP,
                GRE, ERSPAN, IP-in-IP, 6in4
@@ -40,7 +41,8 @@ applications : DNS, mDNS, LLMNR, DHCP, DHCPv6, NTP, SSDP, TLS (server name,
                versions, key exchange, certificate), QUIC, HTTP, SIP, RTSP,
                SMTP, FTP, POP3, IMAP, SSH, Telnet, SNMP, syslog, TFTP,
                NetBIOS, SMB, LDAP, Kerberos, RADIUS, STUN/TURN, MQTT, CoAP,
-               ONC RPC/NFS, RDP, VNC, Modbus/TCP, WS-Discovery
+               ONC RPC/NFS, RDP, VNC, Modbus/TCP, WS-Discovery, Tuya
+               (smart devices), Dropbox LAN sync
 
 snif does not reassemble the TCP streams: a message cut over several
 segments is decoded only in its first segment.

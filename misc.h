@@ -22,7 +22,8 @@
 
 /* other protocols: SCTP (RFC 9260) and EIGRP (RFC 7868) carried by IP,
  * MQTT, CoAP, ONC RPC (NFS, mount, portmap), RDP, VNC, Modbus/TCP and
- * WS-Discovery (only decoding and display) */
+ * WS-Discovery, and the local discovery of Tuya devices and of
+ * Dropbox (only decoding and display) */
 
 #define IP_PROTO_SCTP       132
 #define IP_PROTO_EIGRP      88
@@ -35,6 +36,20 @@
 #define VNC_PORT            5900    /* display 0, up to 5909 */
 #define MODBUS_PORT         502
 #define WSD_PORT            3702
+#define TUYA_PORT_31        6666    /* protocol 3.1, in clear */
+#define TUYA_PORT           6667    /* protocols 3.3 and 3.4, encrypted */
+#define TUYA_PORT_35        7000    /* protocol 3.5 */
+#define DROPBOX_LSP_PORT    17500   /* LAN sync discovery */
+
+/* Tuya messages: prefix, sequence, command, length, return code,
+ * data, CRC 32, suffix (protocol 3.5: AES-GCM, other prefix) */
+#define TUYA_PREFIX         0x000055aa
+#define TUYA_SUFFIX         0x0000aa55
+#define TUYA_PREFIX_35      0x00006699
+#define TUYA_HDR_LEN        16
+#define TUYA_HDR_LEN_35     18
+#define TUYA_TRAILER_LEN    8       /* CRC and suffix */
+#define TUYA_RETCODE_LEN    4
 
 #define SCTP_HDR_LEN        12
 #define SCTP_MAX_CHUNKS     16
@@ -48,3 +63,6 @@ void DecodeRDP(u_int8_t *, u_int32_t); /* Decode the start of an RDP connection 
 void DecodeVNC(u_int8_t *, u_int32_t); /* Decode the start of a VNC (RFB) connection */
 void DecodeModbus(u_int8_t *, u_int32_t); /* Decode Modbus/TCP */
 void DecodeWSD(u_int8_t *, u_int32_t); /* Decode a WS-Discovery message */
+int IsTuya(u_int8_t *, u_int32_t); /* Check the prefix of a Tuya message */
+void DecodeTuya(u_int8_t *, u_int32_t); /* Decode a Tuya local message */
+void DecodeDropboxLSP(u_int8_t *, u_int32_t); /* Decode a Dropbox LAN sync announce */

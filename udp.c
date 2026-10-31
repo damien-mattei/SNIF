@@ -284,6 +284,13 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     else if (dp == WSD_PORT) {
       DecodeWSD(data, dsize);
     }
+    else if (((sp == TUYA_PORT) || (dp == TUYA_PORT) || (sp == TUYA_PORT_31) || (dp == TUYA_PORT_31)
+	      || (sp == TUYA_PORT_35) || (dp == TUYA_PORT_35)) && IsTuya(data, dsize)) {
+      DecodeTuya(data, dsize);
+    }
+    else if ((sp == DROPBOX_LSP_PORT) && (dp == DROPBOX_LSP_PORT) && (dsize > 0) && (data[0] == '{')) {
+      DecodeDropboxLSP(data, dsize);
+    }
     else if (IsSTUN(data, dsize)) { /* WebRTC: on any port */
       DecodeSTUN(data, dsize);
     }

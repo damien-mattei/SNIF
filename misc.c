@@ -613,3 +613,145 @@ void DecodeWSD(u_int8_t * pkt, u_int32_t len)
   }
   printf("  (%u bytes of XML)\n", len);
 }
+
+
+/* Tuya commands seen on the local network */
+static const char * TuyaCommand(u_int32_t cmd)
+{
+  switch (cmd) {
+  case 0x00: return "discovery (protocol 3.1)";
+  case 0x07: return "control";
+  case 0x08: return "status";
+  case 0x09: return "heartbeat";
+  case 0x0a: return "data points query";
+  case 0x0d: return "control (new)";
+  case 0x10: return "data points query (new)";
+  case 0x13: return "discovery (protocol 3.3)";
+  case 0x23: return "discovery (protocol 3.4)";
+  case 0x25: return "device information request";
+  }
+  return NULL;
+}
+
+
+/* print a Tuya command */
+static void PrintTuyaCommand(u_int32_t cmd)
+{
+  const char * name = TuyaCommand(cmd);
+
+  if (name != NULL) {
+    printf("%s", name);
+  }
+  else {
+    printf("command 0x%02x", cmd);
+  }
+}
+
+
+/*
+ * Function: IsTuya(u_int8_t *, u_int32_t)
+ *
+ * Purpose: check that UDP data starts with the prefix of a Tuya message
+ *
+ * Arguments: pkt, len => the UDP data
+ *
+ * Returns: 1 if it is a Tuya message
+ */
+int IsTuya(u_int8_t * pkt, u_int32_t len)
+{
+  return (len >= 4) && ((get_u32(pkt) == TUYA_PREFIX) || (get_u32(pkt) == TUYA_PREFIX_35));
+}
+
+
+/*
+ * Function: DecodeTuya(u_int8_t *, u_int32_t)
+ *
+ * Purpose: Decode a message of the Tuya smart devices (plugs, bulbs...)
+ *          on the local network: sequence, command, and the data, in
+ *          clear (JSON) with protocol 3.1, otherwise encrypted
+ *
+ * Arguments: pkt, len => the UDP data
+ *
+ * Returns: void function
+ */
+void DecodeTuya(u_int8_t * pkt, u_int32_t len)
+{
+  u_int32_t seq, cmd, mlen, start, end;
+
+  if (send_esc) {
+    SETCOLOR(SERVICE_COLOR);
+  }
+
+  if ((len >= TUYA_HDR_LEN_35) && (get_u32(pkt) == TUYA_PREFIX_35)) {
+    seq = get_u32(pkt + 6);
+    cmd = get_u32(pkt + 10);
+    printf("Tuya protocol 3.5 ");
+    PrintTuyaCommand(cmd);
+    printf("  seq %u  %u bytes encrypted (AES-GCM)\n", seq, len - TUYA_HDR_LEN_35);
+    return;
+  }
+
+  if (len < TUYA_HDR_LEN) {
+    printf("Tuya truncated (%u bytes)\n", len);
+    return;
+  }
+
+  seq = get_u32(pkt + 4);
+  cmd = get_u32(pkt + 8);
+  mlen = get_u32(pkt + 12); /* from here to the end of the suffix */
+
+  printf("Tuya ");
+  PrintTuyaCommand(cmd);
+  printf("  seq %u", seq);
+
+  if ((mlen > len - TUYA_HDR_LEN) || (mlen < TUYA_TRAILER_LEN)) {
+    printf("  length %u, %u bytes captured (truncated)\n", mlen, len - TUYA_HDR_LEN);
+    return;
+  }
+
+  end = TUYA_HDR_LEN + mlen;
+  if (get_u32(pkt + end - 4) != TUYA_SUFFIX) {
+    printf("  (no suffix)");
+  }
+  end -= TUYA_TRAILER_LEN;
+
+  /* the messages of the devices start with a return code */
+  start = TUYA_HDR_LEN;
+  if ((end >= start + TUYA_RETCODE_LEN) && (pkt[start] == 0) && (pkt[start + 1] == 0)) {
+    if (verb > 0) {
+      printf("  return code %u", get_u32(pkt + start));
+    }
+    start += TUYA_RETCODE_LEN;
+  }
+
+  if ((start < end) && (pkt[start] == '{')) { /* protocol 3.1: JSON in clear */
+    printf("\n  ");
+    PrintQuoted(pkt + start, end - start);
+    printf("\n");
+  }
+  else {
+    printf("  %u bytes encrypted (AES)\n", end - start);
+  }
+}
+
+
+/*
+ * Function: DecodeDropboxLSP(u_int8_t *, u_int32_t)
+ *
+ * Purpose: Decode the announce of a Dropbox client to the others of
+ *          the local network (LAN sync), a JSON text
+ *
+ * Arguments: pkt, len => the UDP data
+ *
+ * Returns: void function
+ */
+void DecodeDropboxLSP(u_int8_t * pkt, u_int32_t len)
+{
+  if (send_esc) {
+    SETCOLOR(SERVICE_COLOR);
+  }
+
+  printf("Dropbox LAN sync discovery\n  ");
+  PrintQuoted(pkt, len);
+  printf("\n");
+}

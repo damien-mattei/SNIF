@@ -58,6 +58,8 @@
 
 #include "mpls.h"
 
+#include "homeplug.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -158,6 +160,12 @@ void DecodeOtherEtherType(u_int16_t type, u_int8_t * pkt, u_int32_t len, struct 
   case ETHERNET_TYPE_MPLS_UNICAST:
   case ETHERNET_TYPE_MPLS_MULTICAST:
     DecodeMPLS(pkt, len, pkthdr);
+    return;
+  case ETHERNET_TYPE_HOMEPLUG:
+    DecodeHomePlug(pkt, len);
+    return;
+  case ETHERNET_TYPE_HOMEPLUG_AV:
+    DecodeHomePlugAV(pkt, len);
     return;
   }
 
