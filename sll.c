@@ -58,6 +58,8 @@ extern int show_eth_vend; /* show ethernet vendor codes */
 
 extern char * pcap_infile; /* read packets from a tcpdump file */
 
+extern int outgoing_pkt; /* the packet was sent by us */
+
 
 #if defined(DLT_LINUX_SLL) || defined(DLT_LINUX_SLL2)
 
@@ -218,6 +220,10 @@ void DecodeLinuxSLLPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
     /* lay the cooked header structure over the packet data */
     sll_hdr_ptr = (SLLHdr *) pkt;
 
+    if (ntohs(sll_hdr_ptr->sll_pkttype) == LINUX_SLL_OUTGOING) {
+      outgoing_pkt = 1;
+    }
+
     if (dump_link_layer) { 
 
       printf("LINUX SLL ");
@@ -271,6 +277,10 @@ void DecodeLinuxSLL2Pkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 
     /* lay the cooked header structure over the packet data */
     sll2_hdr_ptr = (SLL2Hdr *) pkt;
+
+    if (sll2_hdr_ptr->sll2_pkttype == LINUX_SLL_OUTGOING) {
+      outgoing_pkt = 1;
+    }
 
     if (dump_link_layer) { 
 

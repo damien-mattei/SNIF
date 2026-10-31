@@ -792,6 +792,8 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
     printf("Captured packet length %d\n",cap_len);
     }
 
+    outgoing_pkt = 0; /* set by the link layer decoder */
+
     /* call the packet decoder */
     (*grinder) (pkthdr, pkt);
     
@@ -1280,6 +1282,35 @@ int CountLinesInFile(char * filename) {
 
 /******************************************************************/
 /*
+ * Get the hardware address of the interface we capture on: the packets
+ * coming from it are sent by us and the network card may compute their
+ * TCP/UDP checksums after the capture (checksum offloading).
+ */
+void GetDeviceMAC(char * device)
+{
+#ifdef SIOCGIFHWADDR
+  int sd;
+  struct ifreq ifr;
+
+  if ((sd = socket(AF_INET,SOCK_DGRAM,0)) < 0) {
+    return;
+  }
+
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, device, IFNAMSIZ - 1);
+
+  if (ioctl(sd, SIOCGIFHWADDR, &ifr) == 0) {
+    memcpy(my_mac, ifr.ifr_hwaddr.sa_data, 6);
+    my_mac_known = 1;
+  }
+
+  close(sd);
+#endif
+}
+
+
+/******************************************************************/
+/*
  * Get the interface device list, walk through it and deduce those
  * interfaces which can broadcast.
  */
@@ -1764,6 +1795,9 @@ int main(int argc, char **argv) {
 
       /* find IP address of our interface we snif in */ 
       get_device_info();
+
+      /* find its hardware address, to recognize the packets we send */
+      GetDeviceMAC(dev);
 
     }
      

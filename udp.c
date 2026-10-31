@@ -62,6 +62,8 @@ extern int verb; /* verbose level
 
 extern int check_cksum; /* verify TCP and UDP checksums */
 
+extern int outgoing_pkt; /* the packet was sent by us */
+
 
 /*
  * Function: DecodeUDP(u_int8_t *, const u_int32_t, IPHdr *, IP6RawHdr *)
@@ -147,6 +149,13 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     }
 
     if (!check_cksum) { /* -K: the network card may compute it after capture */
+      return;
+    }
+
+    if (outgoing_pkt) { /* not computed yet when we captured it */
+      if (verb > 0) {
+	printf("UDP Checksum: not verified (sent by us, computed by the network card)\n");
+      }
       return;
     }
 

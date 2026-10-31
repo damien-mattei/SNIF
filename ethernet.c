@@ -33,6 +33,7 @@
 #include <pcap.h>
 
 #include <search.h> /* added for hash tables */
+#include <string.h> /* added for memcmp */
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -59,6 +60,10 @@ extern int dump_link_layer; /* dump network link layer info (ethernet address ,.
 
 
 extern int show_eth_vend; /* show ethernet vendor codes */
+
+extern int outgoing_pkt; /* the packet was sent by us */
+extern u_int8_t my_mac[6]; /* hardware address of our interface */
+extern int my_mac_known;
 
 extern int verb; /* verbose level
 		  *  1:   verbose
@@ -174,6 +179,12 @@ char * EtherVendor(u_int8_t * mac)
  */
 void DecodeEthPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 {
+    /* a frame from our own interface is sent by us */
+    if (my_mac_known && (pkthdr->caplen >= ETHER_HDR_LEN)
+	&& (memcmp(((EtherHdr *) pkt)->ether_src, my_mac, 6) == 0)) {
+      outgoing_pkt = 1;
+    }
+
     DecodeEthFrame(pkt, pkthdr->caplen);
 }
 

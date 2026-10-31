@@ -65,6 +65,7 @@ void DecodeTCP(u_int8_t * ,const u_int32_t,IPHdr *,struct _IP6RawHdr *); /* Deco
 void DecodeUDP(u_int8_t *,const u_int32_t,IPHdr *,struct _IP6RawHdr *); /* Decode the UDP transport layer (over IPv4 or IPv6) */
 void DecodeGRE(u_int8_t *, u_int32_t,IPHdr *);/*  Decode Generic Routing Encapsulation Protocol */
 int get_device_info(void); /* Get the interface device list */
+void GetDeviceMAC(char * device); /* hardware address of the capture interface */
 void PrintPorts(u_int16_t,u_int16_t,char); /* print source and destination ports */
 void printResolvedIP(char *); /* resolve IP in hostname and print it */
 void printResolvedIP6(struct in6_addr *); /* resolve IPv6 address in hostname and print it */

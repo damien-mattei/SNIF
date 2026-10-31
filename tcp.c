@@ -63,6 +63,8 @@ extern int verb; /* verbose level
 
 extern int check_cksum; /* verify TCP and UDP checksums */
 
+extern int outgoing_pkt; /* the packet was sent by us */
+
 
 /* read a 16 bits number in network order at any alignment */
 static u_int16_t get_u16(u_int8_t * ptr)
@@ -399,6 +401,13 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   /* if we're being "stateless" we probably don't care about the TCP 
    * checksum, but it's not bad to keep around for shits and giggles */
   if (!check_cksum) { /* -K: the network card may compute it after capture */
+    return;
+  }
+
+  if (outgoing_pkt) { /* not computed yet when we captured it */
+    if (verb > 0) {
+      printf("TCP Checksum: not verified (sent by us, computed by the network card)\n");
+    }
     return;
   }
 

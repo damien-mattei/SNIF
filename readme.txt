@@ -12,8 +12,11 @@ common options:
 
 -f file : read the packets from a pcap (tcpdump) file instead of an interface
 
--K : don't verify TCP and UDP checksums (the network card may compute
-     the checksum of the outgoing packets after the capture)
+-K : don't verify TCP and UDP checksums. Without -K, the checksums of the
+     packets sent by us are not verified anyway: the network card computes
+     them after the capture (checksum offloading). They are recognized by
+     the hardware address of the capture interface, or by the direction
+     given by a Linux cooked capture (-i any).
 
 snif -h gives the list of all the options.
 
