@@ -16,6 +16,7 @@ snap.c snap.h \
 enc.c enc.h \
 ppp.c ppp.h \
 pppctl.c pppctl.h \
+isis.c isis.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \

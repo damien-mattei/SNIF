@@ -178,6 +178,8 @@ const char * PPPProtocolName(u_int16_t proto)
   case PPP_IPV6CP: return "IPV6CP";
   case PPP_CCP: return "CCP";
   case PPP_MPLSCP: return "MPLSCP";
+  case 0x0023: return "OSI";
+  case 0x8023: return "OSINLCP";
   case PPP_CDPCP: return "CDPCP";
   case PPP_PAP: return "PAP";
   case PPP_CHAP: return "CHAP";
@@ -205,6 +207,7 @@ int IsPPPControl(u_int16_t proto)
   case PPP_IPV6CP:
   case PPP_CCP:
   case PPP_MPLSCP:
+  case 0x8023: /* OSINLCP */
   case PPP_CDPCP:
   case PPP_PAP:
   case PPP_CHAP:

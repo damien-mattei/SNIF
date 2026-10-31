@@ -42,6 +42,8 @@
 #include "llc.h"
 #include "tokenring.h"
 
+#include "isis.h"
+
 extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
 
 extern int verb; /* verbose level
@@ -107,6 +109,12 @@ void DecodeLLC(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
         DecodeIPX(pkt + sizeof(LLCHdr), len - sizeof(LLCHdr));
     }
  
+  else if((llc_hdr_ptr->dsap == LLC_SAP_OSI) && (llc_hdr_ptr->ssap == LLC_SAP_OSI))
+    {
+        /* ISO network layer: IS-IS, CLNP, ES-IS */
+        DecodeOSI(pkt + sizeof(LLCHdr), len - sizeof(LLCHdr));
+    }
+
     /*
      * Now let's see if we actually care about the packet... If we don't,
      * throw it out!!!
@@ -114,7 +122,6 @@ void DecodeLLC(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
     else  {
      printf("LLC %s (not decoded)\n",
 	    (llc_hdr_ptr->dsap == LLC_SAP_NETBIOS) ? "NetBIOS" :
-	    (llc_hdr_ptr->dsap == LLC_SAP_OSI) ? "ISO network layer" :
 	    (llc_hdr_ptr->dsap == LLC_SAP_IP) ? "IP over 802.2" : "unknown service access point");
  
    }

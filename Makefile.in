@@ -111,8 +111,8 @@ PROGRAMS = $(sbin_PROGRAMS)
 am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
-	pppserial.$(OBJEXT) slip.$(OBJEXT) wifi.$(OBJEXT) \
-	chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
+	isis.$(OBJEXT) pppserial.$(OBJEXT) slip.$(OBJEXT) \
+	wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
 	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
 	loopback.$(OBJEXT) raw.$(OBJEXT) i4lrawip.$(OBJEXT) \
 	i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) arp.$(OBJEXT) ip.$(OBJEXT) \
@@ -149,12 +149,12 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
-	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
-	./$(DEPDIR)/misc.Po ./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po \
-	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
-	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po ./$(DEPDIR)/pppoe.Po \
-	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
-	./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
+	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/isis.Po ./$(DEPDIR)/llc.Po \
+	./$(DEPDIR)/loopback.Po ./$(DEPDIR)/misc.Po \
+	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
+	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
+	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
+	./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
 	./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
 	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
 	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
@@ -362,6 +362,7 @@ snap.c snap.h \
 enc.c enc.h \
 ppp.c ppp.h \
 pppctl.c pppctl.h \
+isis.c isis.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -552,6 +553,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/iproto.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipx.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/isis.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/llc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loopback.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/misc.Po@am__quote@ # am--include-marker
@@ -962,6 +964,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/iproto.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/ipx.Po
+	-rm -f ./$(DEPDIR)/isis.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
 	-rm -f ./$(DEPDIR)/misc.Po
@@ -1061,6 +1064,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/iproto.Po
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/ipx.Po
+	-rm -f ./$(DEPDIR)/isis.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
 	-rm -f ./$(DEPDIR)/misc.Po

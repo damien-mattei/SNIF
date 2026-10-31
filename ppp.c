@@ -43,6 +43,8 @@
 #include "pppctl.h"
 
 #include "mpls.h"
+
+#include "isis.h"
 #include "chdlc.h"
 
 
@@ -189,6 +191,10 @@ void DecodePppPktEncapsulated( u_int8_t * pkt,u_int32_t len)
 
         case PPP_MPLS:
 	    DecodeMPLS(pkt + hlen, len - hlen, NULL);
+            break;
+
+        case PPP_OSI:
+	    DecodeOSI(pkt + hlen, len - hlen);
             break;
 
         default:

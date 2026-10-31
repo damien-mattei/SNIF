@@ -58,7 +58,7 @@ network      : IPv4 (options), IPv6 (extension headers), ICMP, ICMPv6
                (neighbor discovery, MLD), IGMP, IPX (RIP, SAP), AH, ESP,
                GRE, ERSPAN, IP-in-IP, 6in4
 transport    : TCP (options), UDP, SCTP
-routing      : OSPF v2/v3, BGP, RIP, RIPng, EIGRP, PIM, VRRP, HSRP, BFD
+routing      : OSPF v2/v3, IS-IS, BGP, RIP, RIPng, EIGRP, PIM, VRRP, HSRP, BFD
 tunnels, VPN : VXLAN, Geneve, L2TP, Teredo, GTP-U, IKE v1/v2, ESP in UDP,
                WireGuard, OpenVPN
 applications : DNS, mDNS, LLMNR, DHCP, DHCPv6, NTP, SSDP, TLS (server name,
