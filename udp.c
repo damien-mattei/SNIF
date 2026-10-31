@@ -58,6 +58,8 @@
 
 #include "ssdp.h"
 
+#include "quic.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -193,6 +195,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == SSDP_PORT) || (dp == SSDP_PORT)) {
       DecodeSSDP(data, dsize);
+    }
+    else if ((sp == QUIC_PORT) || (dp == QUIC_PORT) || (sp == QUIC_PORT_DOQ) || (dp == QUIC_PORT_DOQ)) {
+      DecodeQUIC(data, dsize);
     }
 }
 

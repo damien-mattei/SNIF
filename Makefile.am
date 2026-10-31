@@ -45,6 +45,7 @@ dhcp.c dhcp.h \
 ntp.c ntp.h \
 ssdp.c ssdp.h \
 tls.c tls.h \
+quic.c quic.h \
 gre.c gre.h \
 terminal.h \
 color.h
