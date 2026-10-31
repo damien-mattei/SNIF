@@ -121,7 +121,7 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
 	mpls.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
 	tunnel.$(OBJEXT) vpn.$(OBJEXT) text.$(OBJEXT) \
-	services.$(OBJEXT) gre.$(OBJEXT)
+	services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -148,8 +148,9 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
 	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
 	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po \
-	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
-	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
+	./$(DEPDIR)/misc.Po ./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po \
+	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
+	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppoe.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/quic.Po \
 	./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
 	./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
@@ -394,6 +395,7 @@ tunnel.c tunnel.h \
 vpn.c vpn.h \
 text.c text.h \
 services.c services.h \
+misc.c misc.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -538,6 +540,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipx.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/llc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loopback.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/misc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oldpflog.Po@am__quote@ # am--include-marker
@@ -902,6 +905,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/misc.Po
 	-rm -f ./$(DEPDIR)/mpls.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
@@ -998,6 +1002,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ipx.Po
 	-rm -f ./$(DEPDIR)/llc.Po
 	-rm -f ./$(DEPDIR)/loopback.Po
+	-rm -f ./$(DEPDIR)/misc.Po
 	-rm -f ./$(DEPDIR)/mpls.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po

@@ -48,6 +48,8 @@
 
 #include "routing.h"
 
+#include "misc.h"
+
 #include "iproto.h"
 
 
@@ -101,6 +103,14 @@ void DecodeIPProtocol(u_int8_t proto, u_int8_t * pkt, u_int32_t len, int ipv6)
 
   case IP_PROTO_PIM:
     DecodePIM(pkt, len, ipv6);
+    return;
+
+  case IP_PROTO_SCTP:
+    DecodeSCTP(pkt, len);
+    return;
+
+  case IP_PROTO_EIGRP:
+    DecodeEIGRP(pkt, len);
     return;
   }
 

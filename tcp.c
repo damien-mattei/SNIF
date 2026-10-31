@@ -61,6 +61,8 @@
 
 #include "services.h"
 
+#include "misc.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -395,6 +397,21 @@ static void DecodeTCPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int3
   }
   else if ((sp == KERBEROS_PORT) || (dp == KERBEROS_PORT)) {
     DecodeKerberos(data, dsize, 1);
+  }
+  else if ((sp == MQTT_PORT) || (dp == MQTT_PORT)) {
+    DecodeMQTT(data, dsize);
+  }
+  else if ((sp == RPC_PORT) || (dp == RPC_PORT) || (sp == NFS_PORT) || (dp == NFS_PORT)) {
+    DecodeRPC(data, dsize, 1);
+  }
+  else if ((sp == RDP_PORT) || (dp == RDP_PORT)) {
+    DecodeRDP(data, dsize);
+  }
+  else if (((sp >= VNC_PORT) && (sp <= VNC_PORT + 9)) || ((dp >= VNC_PORT) && (dp <= VNC_PORT + 9))) {
+    DecodeVNC(data, dsize);
+  }
+  else if ((sp == MODBUS_PORT) || (dp == MODBUS_PORT)) {
+    DecodeModbus(data, dsize);
   }
   else if (!DecodeTextProtocol(sp, dp, data, dsize)) {
     /* on the other ports, only the hello messages are recognized */

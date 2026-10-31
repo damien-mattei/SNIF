@@ -70,6 +70,8 @@
 
 #include "services.h"
 
+#include "misc.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -272,6 +274,15 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == KERBEROS_PORT) || (dp == KERBEROS_PORT)) {
       DecodeKerberos(data, dsize, 0);
+    }
+    else if ((sp == COAP_PORT) || (dp == COAP_PORT)) {
+      DecodeCoAP(data, dsize);
+    }
+    else if ((sp == RPC_PORT) || (dp == RPC_PORT) || (sp == NFS_PORT) || (dp == NFS_PORT)) {
+      DecodeRPC(data, dsize, 0);
+    }
+    else if (dp == WSD_PORT) {
+      DecodeWSD(data, dsize);
     }
     else if (IsSTUN(data, dsize)) { /* WebRTC: on any port */
       DecodeSTUN(data, dsize);

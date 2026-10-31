@@ -55,6 +55,7 @@ tunnel.c tunnel.h \
 vpn.c vpn.h \
 text.c text.h \
 services.c services.h \
+misc.c misc.h \
 gre.c gre.h \
 terminal.h \
 color.h
