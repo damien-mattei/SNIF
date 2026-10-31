@@ -21,13 +21,13 @@ common options:
 
      layer                       256 colors       8 colors
      link (Ethernet, Wi-Fi...)   soft green       green
-     network (IP, IPv6, ARP)     cornflower blue  blue
+     network (IP, IPv6, ARP)     golden yellow    yellow
      ICMP, ICMPv6, IGMP          light red        red
      TCP, SCTP                   turquoise        cyan
-     UDP                         soft pink        magenta
-     applications                golden yellow    yellow
-     tunnels (GRE, VXLAN...)     orange           yellow
-     routing (OSPF, BGP...)      light purple     yellow
+     UDP                         cornflower blue  blue
+     applications                pale magenta     magenta
+     tunnels (GRE, VXLAN...)     orange           magenta
+     routing (OSPF, BGP...)      light purple     magenta
 
 -S : show a symbol before the first line of each layer, which helps
      without colors (-s, or the output in a file): in UTF-8 when the
