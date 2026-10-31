@@ -68,6 +68,8 @@
 
 #include "text.h"
 
+#include "services.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -248,6 +250,31 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == SIP_PORT) || (dp == SIP_PORT)) {
       DecodeTextProtocol(sp, dp, data, dsize);
+    }
+    else if ((sp == SNMP_PORT) || (dp == SNMP_PORT) || (dp == SNMP_TRAP_PORT)) {
+      DecodeSNMP(data, dsize);
+    }
+    else if (dp == SYSLOG_PORT) {
+      DecodeSyslog(data, dsize);
+    }
+    else if (dp == TFTP_PORT) {
+      DecodeTFTP(data, dsize);
+    }
+    else if ((sp == NBNS_PORT) || (dp == NBNS_PORT)) {
+      DecodeNBNS(data, dsize);
+    }
+    else if ((sp == NBDGM_PORT) || (dp == NBDGM_PORT)) {
+      DecodeNBDGM(data, dsize);
+    }
+    else if ((sp == RADIUS_PORT) || (dp == RADIUS_PORT) || (sp == RADIUS_ACCT_PORT) || (dp == RADIUS_ACCT_PORT)
+	     || (sp == RADIUS_OLD_PORT) || (dp == RADIUS_OLD_PORT) || (sp == RADIUS_OLD_ACCT_PORT) || (dp == RADIUS_OLD_ACCT_PORT)) {
+      DecodeRADIUS(data, dsize);
+    }
+    else if ((sp == KERBEROS_PORT) || (dp == KERBEROS_PORT)) {
+      DecodeKerberos(data, dsize, 0);
+    }
+    else if (IsSTUN(data, dsize)) { /* WebRTC: on any port */
+      DecodeSTUN(data, dsize);
     }
 }
 

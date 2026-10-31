@@ -59,6 +59,8 @@
 
 #include "text.h"
 
+#include "services.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -384,6 +386,15 @@ static void DecodeTCPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int3
   }
   else if ((sp == BGP_PORT) || (dp == BGP_PORT)) {
     DecodeBGP(data, dsize);
+  }
+  else if ((sp == SMB_PORT) || (dp == SMB_PORT) || (sp == NBSSN_PORT) || (dp == NBSSN_PORT)) {
+    DecodeSMB(data, dsize);
+  }
+  else if ((sp == LDAP_PORT) || (dp == LDAP_PORT)) {
+    DecodeLDAP(data, dsize);
+  }
+  else if ((sp == KERBEROS_PORT) || (dp == KERBEROS_PORT)) {
+    DecodeKerberos(data, dsize, 1);
   }
   else if (!DecodeTextProtocol(sp, dp, data, dsize)) {
     /* on the other ports, only the hello messages are recognized */
