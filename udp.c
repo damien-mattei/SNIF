@@ -62,6 +62,10 @@
 
 #include "routing.h"
 
+#include "tunnel.h"
+
+#include "vpn.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -212,6 +216,33 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((dp == BFD_PORT) || (dp == BFD_MULTIHOP_PORT)) {
       DecodeBFD(data, dsize);
+    }
+    else if (dp == VXLAN_PORT) {
+      DecodeVXLAN(data, dsize);
+    }
+    else if (dp == GENEVE_PORT) {
+      DecodeGeneve(data, dsize);
+    }
+    else if ((sp == L2TP_PORT) || (dp == L2TP_PORT)) {
+      DecodeL2TP(data, dsize);
+    }
+    else if ((sp == TEREDO_PORT) || (dp == TEREDO_PORT)) {
+      DecodeTeredo(data, dsize);
+    }
+    else if ((sp == GTPU_PORT) || (dp == GTPU_PORT)) {
+      DecodeGTPU(data, dsize);
+    }
+    else if ((sp == IKE_PORT) || (dp == IKE_PORT)) {
+      DecodeIKE(data, dsize, 0);
+    }
+    else if ((sp == IKE_NATT_PORT) || (dp == IKE_NATT_PORT)) {
+      DecodeIKE(data, dsize, 1);
+    }
+    else if ((sp == WIREGUARD_PORT) || (dp == WIREGUARD_PORT)) {
+      DecodeWireGuard(data, dsize);
+    }
+    else if ((sp == OPENVPN_PORT) || (dp == OPENVPN_PORT)) {
+      DecodeOpenVPN(data, dsize);
     }
 }
 

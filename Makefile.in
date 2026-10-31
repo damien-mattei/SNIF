@@ -120,7 +120,7 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
 	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
 	mpls.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
-	gre.$(OBJEXT)
+	tunnel.$(OBJEXT) vpn.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -154,7 +154,8 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/sll.Po ./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po \
 	./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po \
 	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po \
-	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
+	./$(DEPDIR)/tunnel.Po ./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po \
+	./$(DEPDIR)/vpn.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -386,6 +387,8 @@ slow.c slow.h \
 mpls.c mpls.h \
 iproto.c iproto.h \
 routing.c routing.h \
+tunnel.c tunnel.h \
+vpn.c vpn.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -550,8 +553,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tokenring.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tunnel.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/udp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vlan.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vpn.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/wifi.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -910,8 +915,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/tcp.Po
 	-rm -f ./$(DEPDIR)/tls.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po
+	-rm -f ./$(DEPDIR)/tunnel.Po
 	-rm -f ./$(DEPDIR)/udp.Po
 	-rm -f ./$(DEPDIR)/vlan.Po
+	-rm -f ./$(DEPDIR)/vpn.Po
 	-rm -f ./$(DEPDIR)/wifi.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1002,8 +1009,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/tcp.Po
 	-rm -f ./$(DEPDIR)/tls.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po
+	-rm -f ./$(DEPDIR)/tunnel.Po
 	-rm -f ./$(DEPDIR)/udp.Po
 	-rm -f ./$(DEPDIR)/vlan.Po
+	-rm -f ./$(DEPDIR)/vpn.Po
 	-rm -f ./$(DEPDIR)/wifi.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

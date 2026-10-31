@@ -51,6 +51,8 @@ slow.c slow.h \
 mpls.c mpls.h \
 iproto.c iproto.h \
 routing.c routing.h \
+tunnel.c tunnel.h \
+vpn.c vpn.h \
 gre.c gre.h \
 terminal.h \
 color.h
