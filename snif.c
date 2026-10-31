@@ -1110,7 +1110,7 @@ void ParseCmdLine(int argc, char *argv[])
   int only_8_colors = 0;          /* -8 */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:")) != EOF)
     {
       switch(ch) {
 
@@ -1138,6 +1138,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
 	printf(" -x : dump the packets in hexadecimal and ASCII\n");
 	printf(" -8 : use only the 8 basic colors, even if the terminal knows 256 colors\n");
+	printf(" -T rtp : decode the UDP datagrams as RTP and RTCP (otherwise recognized by their header)\n");
 	printf("\n filter expression : only the packets matching it are shown, in the\n");
 	printf(" syntax of tcpdump (see man pcap-filter), ex: snif -i eth0 port 53\n");
 	CleanExit(0);
@@ -1238,6 +1239,16 @@ void ParseCmdLine(int argc, char *argv[])
 
       case '8':
 	only_8_colors = 1;
+	break;
+
+      case 'T':
+	if ((strcmp(optarg, "rtp") == 0) || (strcmp(optarg, "rtcp") == 0)) {
+	  force_rtp = 1;
+	}
+	else {
+	  fprintf(stderr, "Unknown packet type for -T: %s (rtp or rtcp)\n", optarg);
+	  CleanExit(1);
+	}
 	break;
 
       }

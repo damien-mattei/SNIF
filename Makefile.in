@@ -111,7 +111,7 @@ PROGRAMS = $(sbin_PROGRAMS)
 am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
-	isis.$(OBJEXT) flow.$(OBJEXT) ldp.$(OBJEXT) \
+	isis.$(OBJEXT) flow.$(OBJEXT) ldp.$(OBJEXT) rtp.$(OBJEXT) \
 	pppserial.$(OBJEXT) slip.$(OBJEXT) wifi.$(OBJEXT) \
 	chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
 	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
@@ -157,10 +157,10 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
 	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
 	./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
-	./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
-	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
-	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
-	./$(DEPDIR)/text.Po ./$(DEPDIR)/tls.Po \
+	./$(DEPDIR)/rtp.Po ./$(DEPDIR)/services.Po ./$(DEPDIR)/slip.Po \
+	./$(DEPDIR)/sll.Po ./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po \
+	./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po \
+	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/text.Po ./$(DEPDIR)/tls.Po \
 	./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/tunnel.Po \
 	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/vpn.Po \
 	./$(DEPDIR)/wifi.Po
@@ -367,6 +367,7 @@ pppctl.c pppctl.h \
 isis.c isis.h \
 flow.c flow.h \
 ldp.c ldp.h \
+rtp.c rtp.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -574,6 +575,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quic.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/raw.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/routing.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rtp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/services.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/slip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sll.Po@am__quote@ # am--include-marker
@@ -987,6 +989,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/routing.Po
+	-rm -f ./$(DEPDIR)/rtp.Po
 	-rm -f ./$(DEPDIR)/services.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po
@@ -1089,6 +1092,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/routing.Po
+	-rm -f ./$(DEPDIR)/rtp.Po
 	-rm -f ./$(DEPDIR)/services.Po
 	-rm -f ./$(DEPDIR)/slip.Po
 	-rm -f ./$(DEPDIR)/sll.Po

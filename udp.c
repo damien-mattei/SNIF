@@ -76,6 +76,8 @@
 
 #include "ldp.h"
 
+#include "rtp.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -87,6 +89,8 @@ extern int verb; /* verbose level
 		  */
 
 extern int check_cksum; /* verify TCP and UDP checksums */
+
+extern int force_rtp; /* decode the UDP datagrams as RTP and RTCP (-T rtp) */
 
 extern int outgoing_pkt; /* the packet was sent by us */
 
@@ -176,6 +180,16 @@ static void CheckUDPChecksum(u_int8_t * pkt, u_int16_t uhlen, IPHdr * iptr, IP6R
 }
 
 
+/* a version of QUIC in a long header: negotiation, v1, v2, drafts */
+static int IsQUICVersion(const u_int8_t * v)
+{
+  u_int32_t version = ((u_int32_t) v[0] << 24) | ((u_int32_t) v[1] << 16) | ((u_int32_t) v[2] << 8) | v[3];
+
+  return (version == QUIC_VERSION_NEGOTIATION) || (version == QUIC_VERSION_1)
+    || (version == QUIC_VERSION_2) || ((version >> 8) == 0xff0000);
+}
+
+
 /*
  * Function: DecodeUDPPayload(u_int16_t, u_int16_t, u_int8_t *, u_int16_t)
  *
@@ -189,7 +203,10 @@ static void CheckUDPChecksum(u_int8_t * pkt, u_int16_t uhlen, IPHdr * iptr, IP6R
  */
 static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int16_t dsize)
 {
-    if ((sp == DNS_PORT) || (dp == DNS_PORT)) {
+    if (force_rtp && (dsize >= 2) && ((data[0] >> 6) == RTP_VERSION)) { /* -T rtp, as tcpdump */
+      DecodeRTP(data, dsize);
+    }
+    else if ((sp == DNS_PORT) || (dp == DNS_PORT)) {
       DecodeDNS(data, dsize, DNS_PROTO_DNS);
     }
     else if ((sp == MDNS_PORT) || (dp == MDNS_PORT)) {
@@ -213,7 +230,16 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
       DecodeSSDP(data, dsize);
     }
     else if ((sp == QUIC_PORT) || (dp == QUIC_PORT) || (sp == QUIC_PORT_DOQ) || (dp == QUIC_PORT_DOQ)) {
-      DecodeQUIC(data, dsize);
+      /* the media of some video conferences: first byte 128 to 191,
+       * without the fixed bit of QUIC (RFC 9443), unless the version is
+       * one of QUIC (negotiation, or the fixed bit greased, RFC 9287) */
+      if ((dsize >= 5) && ((data[0] & 0xc0) == 0x80) && !IsQUICVersion(data + 1)
+	  && (IsRTCP(data, dsize) || LooksLikeRTP(data, dsize, sp, dp))) {
+	DecodeRTP(data, dsize);
+      }
+      else {
+	DecodeQUIC(data, dsize);
+      }
     }
     else if ((sp == RIP_PORT) && (dp == RIP_PORT)) {
       DecodeRIP(data, dsize);
@@ -304,6 +330,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if (IsSTUN(data, dsize)) { /* WebRTC: on any port */
       DecodeSTUN(data, dsize);
+    }
+    else if ((sp >= 1024) && (dp >= 1024) && (IsRTCP(data, dsize) || LooksLikeRTP(data, dsize, sp, dp))) {
+      DecodeRTP(data, dsize); /* no port of its own: recognized by its header */
     }
 }
 

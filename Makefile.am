@@ -19,6 +19,7 @@ pppctl.c pppctl.h \
 isis.c isis.h \
 flow.c flow.h \
 ldp.c ldp.h \
+rtp.c rtp.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \

@@ -30,6 +30,12 @@ common options:
      tunnels (GRE, VXLAN...)     orange, dark orange         magenta
      routing (OSPF, BGP...)      light purple, dark purple   magenta
 
+-T rtp : decode the UDP datagrams as RTP and RTCP, as tcpdump -T rtp.
+     Without it, RTP and RTCP have no port of their own and are
+     recognized by their header (the extensions of WebRTC, the even ports
+     and usual codecs of the SIP phones), carefully to avoid mistaking
+     other traffic for them
+
 -S : show a symbol before the first line of each layer, which helps
      without colors (-s, or the output in a file): in UTF-8 when the
      locale is (LANG=fr_FR.UTF-8 for instance), in ASCII otherwise
@@ -66,7 +72,8 @@ applications : DNS, mDNS, LLMNR, DHCP, DHCPv6, NTP, SSDP, TLS (server name,
                versions, key exchange, certificate), QUIC, HTTP, SIP, RTSP,
                SMTP, FTP, POP3, IMAP, SSH, Telnet, SNMP, syslog, TFTP,
                NetBIOS, SMB, LDAP, Kerberos, RADIUS, STUN/TURN, NetFlow (v1,
-               v5, v6, v7, v9), IPFIX, MQTT, CoAP,
+               v5, v6, v7, v9), IPFIX, RTP/RTCP (and SRTP/SRTCP headers),
+               MQTT, CoAP,
                ONC RPC/NFS, RDP, VNC, Modbus/TCP, WS-Discovery, Tuya
                (smart devices), Dropbox LAN sync
 

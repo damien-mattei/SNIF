@@ -9,6 +9,7 @@ snif \- Sniff Network Interface's Frames, a packet decoder with one color by lay
 .SH SYNOPSIS
 .B snif
 [\fB\-hvpedtsSnlargKx8\fR]
+[\fB\-T rtp\fR]
 [\fB\-i\fR \fIinterface\fR]
 [\fB\-f\fR \fIfile\fR]
 [\fB\-c\fR \fIcount\fR]
@@ -95,6 +96,13 @@ offloading).
 .TP
 .B \-x
 Dump each packet in hexadecimal and ASCII after its decoding.
+.TP
+.B \-T rtp
+Decode all the UDP datagrams of version 2 as RTP and RTCP, as
+.B tcpdump \-T rtp
+does. Without it, RTP is recognized by its header: the header extensions
+of WebRTC, or the even ports and the usual codecs of the SIP phones;
+RTCP by its packet types and lengths.
 .SH FILTER EXPRESSION
 The arguments following the options make a capture filter, in the syntax
 of

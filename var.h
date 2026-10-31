@@ -111,6 +111,8 @@ int use_colors = 1; /* send the colors and attributes, unless -s;
 
 int show_symbols = 0; /* show a symbol before the first line of each layer (-S) */
 
+int force_rtp = 0; /* decode the UDP datagrams as RTP and RTCP (-T rtp) */
+
 char * capture_filter = NULL; /* capture filter (tcpdump syntax) made of
 			       * the arguments following the options */
 
