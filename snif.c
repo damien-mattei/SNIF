@@ -115,6 +115,10 @@
 
 #include "var.h" /* variable (globals) and some structure definition */
 
+#ifndef PCAP_NETMASK_UNKNOWN /* libpcap before 1.1 */
+#define PCAP_NETMASK_UNKNOWN 0xffffffff
+#endif
+
 
 
 
@@ -837,6 +841,7 @@ void ParseCmdLine(int argc, char *argv[])
       case 'h':
 	ShowProgramName();
 	ShowAuthorInfo();
+	printf(" usage : snif [options] [filter expression]\n\n");
 	printf(" options :\n\n");
 	printf(" -h : help\n");
 	printf(" -i interface : specify interface (ex: -i eth0)\n");
@@ -854,6 +859,8 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -g : port number greater or equal to 1024 will be displayed in text\n");
 	printf(" -r : resolve IP address in hostname\n");
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
+	printf("\n filter expression : only the packets matching it are shown, in the\n");
+	printf(" syntax of tcpdump (see man pcap-filter), ex: snif -i eth0 port 53\n");
 	CleanExit(0);
 	break;
 		  
@@ -944,6 +951,33 @@ void ParseCmdLine(int argc, char *argv[])
 
       }
     }
+
+  /* the remaining arguments make the capture filter, as for tcpdump */
+  if (optind < argc) {
+
+    size_t flen = 0;
+    int i;
+
+    for (i = optind; i < argc; i++) {
+      flen += strlen(argv[i]) + 1;
+    }
+
+    capture_filter = malloc(flen);
+
+    if (capture_filter == NULL) {
+      fprintf(stderr,"Error: Out of memory for the capture filter.\n");
+      CleanExit(1);
+    }
+
+    capture_filter[0] = '\0';
+
+    for (i = optind; i < argc; i++) {
+      if (i > optind) {
+	strcat(capture_filter, " ");
+      }
+      strcat(capture_filter, argv[i]);
+    }
+  }
 
 }
 
@@ -1900,6 +1934,29 @@ int main(int argc, char **argv) {
           }
           CleanExit(1);
         }
+    }
+
+    /* keep only the packets matching the filter, the kernel does the
+     * job in live capture; the mask is only used by "ip broadcast" */
+    if (capture_filter != NULL) {
+
+      struct bpf_program filter_code;
+
+      if (pcap_compile(descr, &filter_code, capture_filter, 1,
+		       (pcap_infile == NULL) ? maskp : PCAP_NETMASK_UNKNOWN) == -1) {
+	fprintf(stderr,"Bad capture filter \"%s\": %s\n", capture_filter, pcap_geterr(descr));
+	CleanExit(1);
+      }
+
+      if (pcap_setfilter(descr, &filter_code) == -1) {
+	fprintf(stderr,"pcap_setfilter(): %s\n", pcap_geterr(descr));
+	pcap_freecode(&filter_code);
+	CleanExit(1);
+      }
+
+      pcap_freecode(&filter_code);
+
+      printf("FILTER: %s\n", capture_filter);
     }
 
     datalink = pcap_datalink(descr);

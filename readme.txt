@@ -20,6 +20,12 @@ common options:
 
 snif -h gives the list of all the options.
 
+the arguments following the options make a capture filter, in the syntax
+of tcpdump (man pcap-filter), ex:
+
+snif -i wlp0s20f3 port 53
+snif -f capture.pcap 'host 192.168.1.1 and not tcp'
+
 live capture needs root privileges (sudo ./snif), or the capture
 capabilities given to the program once after each build:
 

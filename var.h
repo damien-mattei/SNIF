@@ -101,6 +101,9 @@ int outgoing_pkt = 0; /* the packet was sent by us: its TCP/UDP checksum
 u_int8_t my_mac[6]; /* hardware address of the interface we capture on */
 int my_mac_known = 0;
 
+char * capture_filter = NULL; /* capture filter (tcpdump syntax) made of
+			       * the arguments following the options */
+
 char * pcap_infile = NULL; /* read packets from a tcpdump file
 			    * instead of a network interface */
 
