@@ -16,9 +16,25 @@ common options:
 
 -8 : use only the 8 basic colors. By default, when the terminal says it
      knows the palette of 256 colors (TERM=xterm-256color, or COLORTERM
-     set, as in xfce4-terminal, gnome-terminal, konsole), the tunnels are
-     shown in orange and the routing protocols in light purple, otherwise
-     in yellow as the applications.
+     set, as in xfce4-terminal, gnome-terminal, konsole), softer colors
+     are used (see color.h):
+
+     layer                       256 colors       8 colors
+     link (Ethernet, Wi-Fi...)   soft green       green
+     network (IP, IPv6, ARP)     cornflower blue  blue
+     ICMP, ICMPv6, IGMP          light red        red
+     TCP, SCTP                   turquoise        cyan
+     UDP                         soft pink        magenta
+     applications                golden yellow    yellow
+     tunnels (GRE, VXLAN...)     orange           yellow
+     routing (OSPF, BGP...)      light purple     yellow
+
+-S : show a symbol before the first line of each layer, which helps
+     without colors (-s, or the output in a file): in UTF-8 when the
+     locale is (LANG=fr_FR.UTF-8 for instance), in ASCII otherwise
+
+     link ▪ #   network ◆ @   ICMP ✖ !   transport ▸ >
+     application ✻ *   tunnel ◎ =   routing ✦ +
 
 -K : don't verify TCP and UDP checksums. Without -K, the checksums of the
      packets sent by us are not verified anyway: the network card computes

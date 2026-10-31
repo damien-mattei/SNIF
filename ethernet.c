@@ -408,7 +408,12 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
     /* char etherhost[255]; */ /* hostname in ARP cache */
 
     if (send_esc) { /* the frame may be inside a tunnel of another color */
-      SETCOLOR( DATA_LINK_LAYER_COLOR );
+      if (dump_link_layer || (cap_len < ETHER_HDR_LEN)) {
+	SETCOLOR( DATA_LINK_LAYER_COLOR );
+      }
+      else {
+	SETCOLORONLY( DATA_LINK_LAYER_COLOR ); /* hidden layer: no symbol (-S) */
+      }
     }
 
     /* do a little validation */
@@ -611,6 +616,9 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
       case ETHERNET_TYPE_IP:
 	
 	if (verb > 0) {
+	  if (send_esc) { /* it is about the IP layer */
+	    SETCOLOR(IP_COLOR);
+	  }
 	  printf(
 		 "IP datagram size calculated to be %lu bytes\n",
 		 (unsigned long)(cap_len - ETHERNET_HEADER_LEN)

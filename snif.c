@@ -66,6 +66,10 @@
 #include <net/if.h> /* added for get_device_info */
 #include <sys/types.h> /* added for getuid() */
 #include <string.h> /* added for strlen */
+
+#include <locale.h> /* setlocale, for the symbols in UTF-8 */
+
+#include <langinfo.h> /* nl_langinfo */
 #include <strings.h> /* added for strncasecmp */
 
 #ifdef NO_USABLE_ETHER_NTOA
@@ -802,6 +806,83 @@ void DumpHex(u_char * pkt, u_int32_t len)
 }
 
 
+/* symbol of each layer, in UTF-8 and in ASCII, by color (-S) */
+static const struct {
+  int color;
+  const char * utf8;
+  const char * ascii;
+} layer_symbol[] = {
+  { DATA_LINK_LAYER_COLOR, "\u25aa", "#" },  /* small square */
+  { NETWORK_LAYER_COLOR, "\u25c6", "@" },    /* diamond */
+  { ICMP_COLOR, "\u2716", "!" },             /* heavy multiplication x */
+  { TCP_COLOR, "\u25b8", ">" },              /* small triangle */
+  { UDP_COLOR, "\u25b8", ">" },
+  { APPLICATION_LAYER_COLOR, "\u273b", "*" },/* teardrop-spoked asterisk */
+  { TUNNEL_COLOR, "\u25ce", "=" },           /* bullseye */
+  { ROUTING_COLOR, "\u2726", "+" },          /* four pointed star */
+  { 0, NULL, NULL }
+};
+
+static int symbols_utf8 = 0; /* the locale is in UTF-8 */
+
+static int symbol_color = -1; /* color of the last symbol of the packet */
+
+
+/*
+ * Function: LayerSymbol(int)
+ *
+ * Purpose: show the symbol of a layer (-S) when its color is set for the
+ *          first time, before its first line: the colors set again in
+ *          the middle of a line are those of the same layer
+ *
+ * Arguments: color => the color of the layer
+ *
+ * Returns: void function
+ */
+void LayerSymbol(int color)
+{
+  int i;
+
+  if (!show_symbols || (color == symbol_color)) {
+    return;
+  }
+
+  for (i = 0; layer_symbol[i].utf8 != NULL; i++) {
+    if (layer_symbol[i].color == color) {
+      symbol_color = color;
+      if (use_colors) { /* in the color of its layer, not bright */
+	NORMALMODE();
+	SETCOLORONLY(color);
+      }
+      printf("%s ", symbols_utf8 ? layer_symbol[i].utf8 : layer_symbol[i].ascii);
+      return;
+    }
+  }
+}
+
+
+/*
+ * Function: LocaleIsUTF8(void)
+ *
+ * Purpose: find if the characters of the locale (LANG, LC_ALL...) are in
+ *          UTF-8, then come back to the C locale used by the decoders
+ *
+ * Returns: 1 if they are
+ */
+static int LocaleIsUTF8(void)
+{
+  int utf8 = 0;
+
+  if (setlocale(LC_CTYPE, "") != NULL) {
+    utf8 = (strcmp(nl_langinfo(CODESET), "UTF-8") == 0);
+  }
+
+  setlocale(LC_CTYPE, "C");
+
+  return utf8;
+}
+
+
 /* ProcessPacket 
  * works on data link layer (layer 2)
  */
@@ -832,7 +913,7 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
     }
 
     if (send_esc) {
-      SETCOLOR(DATA_LINK_LAYER_COLOR);
+      SETCOLORONLY(DATA_LINK_LAYER_COLOR); /* the symbol goes to the link layer */
     }
 
     if (verb > 0) {
@@ -844,6 +925,16 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
     }
 
     outgoing_pkt = 0; /* set by the link layer decoder */
+
+    /* the link layer decoders set their color only after the addresses
+     * in bright, its symbol is shown here unless the layer is hidden */
+    symbol_color = -1;
+    if (dump_link_layer) {
+      LayerSymbol(DATA_LINK_LAYER_COLOR);
+    }
+    else {
+      symbol_color = DATA_LINK_LAYER_COLOR;
+    }
 
     /* call the packet decoder */
     (*grinder) (pkthdr, pkt);
@@ -909,7 +1000,7 @@ void ParseCmdLine(int argc, char *argv[])
   int only_8_colors = 0;          /* -8 */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsnlargKx8")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8")) != EOF)
     {
       switch(ch) {
 
@@ -928,6 +1019,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -d : don't dump link layer info (ethernet address,...)\n");
 	printf(" -t : don't show time stamps\n");
 	printf(" -s : disable the sending of escape sequences to terminal (no color!)\n");
+	printf(" -S : show a symbol before each layer (with or without colors)\n");
 	printf(" -n : print a new line beetween each dumped packet (usefull in monochrome mode)\n");
 	printf(" -l : disable the display of TCP/UDP port numbers in text\n");
 	printf(" -a : do not use hash tables (save memory)\n");
@@ -974,7 +1066,11 @@ void ParseCmdLine(int argc, char *argv[])
 	break;
 
       case 's':
-	send_esc = 0;
+	use_colors = 0;
+	break;
+
+      case 'S':
+	show_symbols = 1;
 	break;
 
       case 'n':
@@ -1040,6 +1136,13 @@ void ParseCmdLine(int argc, char *argv[])
   /* the terminals with 256 colors say it in the environment */
   if (!only_8_colors) {
     colors256 = Terminal256Colors();
+  }
+
+  /* go through the color macros for the colors or for the symbols */
+  send_esc = use_colors || show_symbols;
+
+  if (show_symbols) {
+    symbols_utf8 = LocaleIsUTF8();
   }
 
   /* the remaining arguments make the capture filter, as for tcpdump */

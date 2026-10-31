@@ -46,20 +46,28 @@
 
 extern int colors256; /* the terminal knows the 256 colors palette */
 
+extern int use_colors; /* send the colors and attributes (not with -s) */
+
+void LayerSymbol(int); /* show the symbol of the layer shown in a color (-S) */
+
 /* escape sequence of the foreground color c: 38;5;n in the palette
  * of 256 colors, 30 + color in the palette of 8 colors */
 #define COLORSEQ( c ) ((IS_COLOR256( c ) && colors256) ? "38;5;" : ""), \
   ((IS_COLOR256( c ) && colors256) ? (((c) >> 8) & 0xff) : (((c) & 0xff) + 30))
 
 /* come back in normal mode - reset attributes and color */
-#define NORMALMODE()  printf("%c[0m", 0x1B)
+#define NORMALMODE()  ((void) (use_colors && printf("%c[0m", 0x1B)))
 
 /* set attribute and color */
-#define SETATTCOL( a , c ) printf("%c[%d;%s%dm", 0x1B, a, COLORSEQ( c ) )
+#define SETATTCOL( a , c ) ((void) (use_colors && printf("%c[%d;%s%dm", 0x1B, a, COLORSEQ( c ) )))
 
-#define SETATTRIB( a ) printf("%c[%dm", 0x1B, a )
+#define SETATTRIB( a ) ((void) (use_colors && printf("%c[%dm", 0x1B, a )))
 
-#define SETCOLOR( c ) printf("%c[%s%dm", 0x1B, COLORSEQ( c ) )
+#define SETCOLORONLY( c ) ((void) (use_colors && printf("%c[%s%dm", 0x1B, COLORSEQ( c ) )))
+
+/* the color of a layer is set before its first line: the place of its
+ * symbol (-S), which is shown even without colors */
+#define SETCOLOR( c ) (LayerSymbol( c ), SETCOLORONLY( c ))
 
 
 /* Changes terminal color n ('0' through 'f') to the color
