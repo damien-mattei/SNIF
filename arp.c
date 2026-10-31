@@ -144,6 +144,22 @@ static void printARPIP(u_int8_t * ip)
 }
 
 
+/* print the fields of the ARP header (verbose mode) */
+static void PrintARPHeader(EtherARP * arptr)
+{
+  u_int16_t hrd = ntohs(arptr->ea_hdr.ar_hrd);
+  u_int16_t pro = ntohs(arptr->ea_hdr.ar_pro);
+
+  if (verb > 0) {
+    printf("ARP hardware type: %d%s   protocol type: 0x%04X%s\n",
+	   hrd, (hrd == ARPHRD_ETHER) ? " (Ethernet)" : "",
+	   pro, (pro == ETHERNET_TYPE_IP) ? " (IP)" : "");
+    printf("Hardware address length: %d   Protocol address length: %d   Operation: %d\n",
+	   arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln, ntohs(arptr->ea_hdr.ar_op));
+  }
+}
+
+
 /*
  * Function: DecodeARP(u_int8_t *, const u_int32_t)
  *
@@ -181,33 +197,14 @@ void DecodeARP(u_int8_t * pkt, const u_int32_t len)
   pro = ntohs(arptr->ea_hdr.ar_pro);
   op = ntohs(arptr->ea_hdr.ar_op);
 
-  if (verb > 0) {
-    printf("ARP hardware type: %d%s   protocol type: 0x%04X%s\n",
-	   hrd, (hrd == ARPHRD_ETHER) ? " (Ethernet)" : "",
-	   pro, (pro == ETHERNET_TYPE_IP) ? " (IP)" : "");
-    printf("Hardware address length: %d   Protocol address length: %d   Operation: %d\n",
-	   arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln, op);
-  }
-
   /* we only know how to read ethernet/IPv4 addresses */
   if ((hrd != ARPHRD_ETHER) || (pro != ETHERNET_TYPE_IP)
       || (arptr->ea_hdr.ar_hln != ARP_HW_ADDR_LEN)
       || (arptr->ea_hdr.ar_pln != ARP_PROTO_ADDR_LEN)) {
     printf("ARP #%d for protocol 0x%04X hardware #%d (hln %d, pln %d)\n",
 	   op, pro, hrd, arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln);
+    PrintARPHeader(arptr);
     return;
-  }
-
-  if (verb > 0) {
-    printf("Sender: ");
-    printARPMAC(arptr->arp_sha);
-    printf(" ");
-    printARPIP(arptr->arp_spa);
-    printf("\nTarget: ");
-    printARPMAC(arptr->arp_tha);
-    printf(" ");
-    printARPIP(arptr->arp_tpa);
-    printf("\n");
   }
 
   switch(op)
@@ -266,6 +263,21 @@ void DecodeARP(u_int8_t * pkt, const u_int32_t len)
       break;
 
     }
+
+  /* the details after the main line */
+  PrintARPHeader(arptr);
+
+  if (verb > 0) {
+    printf("Sender: ");
+    printARPMAC(arptr->arp_sha);
+    printf(" ");
+    printARPIP(arptr->arp_spa);
+    printf("\nTarget: ");
+    printARPMAC(arptr->arp_tha);
+    printf(" ");
+    printARPIP(arptr->arp_tpa);
+    printf("\n");
+  }
 
   return;
 

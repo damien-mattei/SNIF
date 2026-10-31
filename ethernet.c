@@ -615,16 +615,6 @@ void DecodeEthFrame(u_int8_t * pkt, u_int32_t cap_len)
 	
       case ETHERNET_TYPE_IP:
 	
-	if (verb > 0) {
-	  if (send_esc) { /* it is about the IP layer */
-	    SETCOLOR(IP_COLOR);
-	  }
-	  printf(
-		 "IP datagram size calculated to be %lu bytes\n",
-		 (unsigned long)(cap_len - ETHERNET_HEADER_LEN)
-		 );
-	}
-	
 	DecodeIP(pkt + ETHERNET_HEADER_LEN, 
 		 cap_len - ETHERNET_HEADER_LEN);
 	

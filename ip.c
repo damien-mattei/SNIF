@@ -298,6 +298,43 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
     /******************************/
 
 
+    /* the addresses first: the main line of the layer */
+    printf("IP ");
+     
+    if (send_esc) {
+      SETATTRIB( BRIGHT );
+      printf("%s",inet_ntoa(iptr->ip_src));
+      NORMALMODE();
+      SETCOLOR( IP_COLOR );
+      if (resolv_ip) {
+	printResolvedIP((char*)&(iptr->ip_src));
+      }
+      printf(" > ");
+      SETATTRIB( BRIGHT );
+      printf("%s",inet_ntoa(iptr->ip_dst));
+      NORMALMODE();
+      SETCOLOR( IP_COLOR);
+      if (resolv_ip) {
+	printResolvedIP((char*)&(iptr->ip_dst));
+      }
+      printf("\n");
+    }
+    else {
+      printf("%s",inet_ntoa(iptr->ip_src));
+      if (resolv_ip) {
+	printResolvedIP((char*)&(iptr->ip_src));
+      }
+      printf(" > %s",inet_ntoa(iptr->ip_dst));
+      if (resolv_ip) {
+	printResolvedIP((char*)&(iptr->ip_dst));
+      }
+      printf("\n");
+    }
+
+    if (verb > 0) {
+      printf("IP datagram size calculated to be %lu bytes\n", (unsigned long) len);
+    }
+
     /* header length sanity check */
     if(hlen < IP_HEADER_LEN_MINI)    {
       printf("Bogus IP header length of %i bytes\n", 
@@ -351,39 +388,6 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
     /* set the remaining packet length */
     ip_len -= hlen;
     
-    printf("IP ");
-     
-    if (send_esc) {
-      SETATTRIB( BRIGHT );
-      printf("%s",inet_ntoa(iptr->ip_src));
-      NORMALMODE();
-      SETCOLOR( IP_COLOR );
-      if (resolv_ip) {
-	printResolvedIP((char*)&(iptr->ip_src));
-      }
-      printf(" > ");
-      SETATTRIB( BRIGHT );
-      printf("%s",inet_ntoa(iptr->ip_dst));
-      NORMALMODE();
-      SETCOLOR( IP_COLOR);
-      if (resolv_ip) {
-	printResolvedIP((char*)&(iptr->ip_dst));
-      }
-      printf("\n");
-    }
-    else {
-      printf("%s",inet_ntoa(iptr->ip_src));
-      if (resolv_ip) {
-	printResolvedIP((char*)&(iptr->ip_src));
-      }
-      printf(" > %s",inet_ntoa(iptr->ip_dst));
-      if (resolv_ip) {
-	printResolvedIP((char*)&(iptr->ip_dst));
-      }
-      printf("\n");
-    }
-     
-
     /* check for fragmented packets */
     frag_offset = ntohs(iptr->ip_off);
 
