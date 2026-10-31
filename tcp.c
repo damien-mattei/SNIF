@@ -57,6 +57,8 @@
 
 #include "routing.h"
 
+#include "text.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -383,7 +385,7 @@ static void DecodeTCPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int3
   else if ((sp == BGP_PORT) || (dp == BGP_PORT)) {
     DecodeBGP(data, dsize);
   }
-  else {
+  else if (!DecodeTextProtocol(sp, dp, data, dsize)) {
     /* on the other ports, only the hello messages are recognized */
     DecodeTLS(data, dsize, IsTLSPort(sp) || IsTLSPort(dp));
   }

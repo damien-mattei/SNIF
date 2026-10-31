@@ -53,6 +53,7 @@ iproto.c iproto.h \
 routing.c routing.h \
 tunnel.c tunnel.h \
 vpn.c vpn.h \
+text.c text.h \
 gre.c gre.h \
 terminal.h \
 color.h

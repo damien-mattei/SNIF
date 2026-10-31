@@ -66,6 +66,8 @@
 
 #include "vpn.h"
 
+#include "text.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -243,6 +245,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if ((sp == OPENVPN_PORT) || (dp == OPENVPN_PORT)) {
       DecodeOpenVPN(data, dsize);
+    }
+    else if ((sp == SIP_PORT) || (dp == SIP_PORT)) {
+      DecodeTextProtocol(sp, dp, data, dsize);
     }
 }
 
