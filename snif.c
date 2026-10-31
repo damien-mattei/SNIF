@@ -1009,8 +1009,8 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
     if (show_ts) {  
       /* time info about reception of packet */
       printf("Packet received at ..... ");
-      if (send_esc) { /* the date in bright white, to find the packets */
-	SETATTCOL(BRIGHT, WHITE);
+      if (send_esc) { /* the date in soft white, to find the packets */
+	SETCOLORONLY(COLOR256(254, WHITE));
       }
       printf("%.24s", ctime((const time_t*)&((pkthdr->ts).tv_sec))); /* without its new line */
       if (send_esc) {
