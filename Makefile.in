@@ -117,7 +117,8 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
 	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
 	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
-	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) gre.$(OBJEXT)
+	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
+	gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -148,8 +149,8 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/raw.Po \
 	./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po ./$(DEPDIR)/snap.Po \
 	./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po \
-	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/udp.Po \
-	./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
+	./$(DEPDIR)/tcp.Po ./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po \
+	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -374,6 +375,7 @@ dns.c dns.h \
 dhcp.c dhcp.h \
 ntp.c ntp.h \
 ssdp.c ssdp.h \
+tls.c tls.h \
 gre.c gre.h \
 terminal.h \
 color.h
@@ -530,6 +532,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ssdp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tcp.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tokenring.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/udp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vlan.Po@am__quote@ # am--include-marker
@@ -883,6 +886,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ssdp.Po
 	-rm -f ./$(DEPDIR)/stp.Po
 	-rm -f ./$(DEPDIR)/tcp.Po
+	-rm -f ./$(DEPDIR)/tls.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po
 	-rm -f ./$(DEPDIR)/udp.Po
 	-rm -f ./$(DEPDIR)/vlan.Po
@@ -968,6 +972,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ssdp.Po
 	-rm -f ./$(DEPDIR)/stp.Po
 	-rm -f ./$(DEPDIR)/tcp.Po
+	-rm -f ./$(DEPDIR)/tls.Po
 	-rm -f ./$(DEPDIR)/tokenring.Po
 	-rm -f ./$(DEPDIR)/udp.Po
 	-rm -f ./$(DEPDIR)/vlan.Po
