@@ -1206,8 +1206,11 @@ void SetColor(int color)
     printf("%c[38;5;%dm", 0x1B,
 	   ((color == symbol_color) && layer_detail) ? COLOR_DETAIL(color) : COLOR_MAIN(color));
   }
+  else if (color == NETWORK_LAYER_COLOR) { /* 8 colors: bright yellow, as the addresses, not the dull brown */
+    printf("%c[1;%dm", 0x1B, (color & 0xff) + 30);
+  }
   else {
-    printf("%c[%dm", 0x1B, (color & 0xff) + 30);
+    printf("%c[22;%dm", 0x1B, (color & 0xff) + 30);
   }
 }
 
@@ -1436,7 +1439,8 @@ static int ParseHexSearch(const char * s, u_char * out)
 
 /* PayloadOffset
  * where the data of the packet begin, after the headers of the link, IP and
- * TCP or UDP layers; the end of the packet (nothing to search) for the others
+ * TCP or UDP layers; after the IP header for the other IP protocols (ICMP,
+ * tunnels...); nothing to search outside IP (ARP)
  */
 static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
 {
@@ -1483,7 +1487,7 @@ static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
     }
   }
   else {
-    return len; /* ARP, other protocols: no data to search */
+    return len; /* ARP and the like: no data to search */
   }
   if (off > len) {
     return len;
@@ -1495,7 +1499,7 @@ static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
     off += 8;
   }
   else {
-    return len; /* ICMP, tunnels...: not TCP or UDP, nothing to search */
+    /* ICMP, tunnels...: everything after the IP header */
   }
   return (off > len) ? len : off;
 }

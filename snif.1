@@ -133,9 +133,9 @@ header, as
 .BR "tcpdump \-A" .
 .TP
 .BI \-m " text"
-Show only the TCP and UDP packets whose data hold this text. The headers
-(link, IP, TCP, UDP) are not searched, only what follows them; the other
-protocols never match. Each packet is
+Show only the packets whose data hold this text. The headers (link, IP,
+TCP, UDP) are not searched, only what follows them: for the other IP
+protocols (ICMP, tunnels...), what follows the IP header. ARP never matches. Each packet is
 searched alone: a text cut between two packets is not found.
 .TP
 .BI \-M " hex"
