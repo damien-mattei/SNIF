@@ -340,6 +340,16 @@ static void CheckTCPChecksum(u_int8_t * pkt, const u_int32_t len, IPHdr * iptr, 
     return;
   }
 
+  /* the end of the segment announced by IP, beyond what we have: the
+   * packet was cut by the capture (or is the sampled header of sFlow) */
+  if (((ip6ptr != NULL) && ((u_int32_t) (pkt - (u_int8_t *) ip6ptr) + len < IP6_HDR_LEN + ntohs(ip6ptr->ip6plen)))
+      || ((ip6ptr == NULL) && ((u_int32_t) (pkt - (u_int8_t *) iptr) + len < ntohs(iptr->ip_len)))) {
+    if (verb > 0) {
+      printf("TCP Checksum: not verified (truncated packet)\n");
+    }
+    return;
+  }
+
   /* calculate the checksum */
   if (ip6ptr != NULL) { /* the IPv6 pseudo header is not the same */
     csum = in_chksum_ip6(ip6ptr, IP_PROTO_TCP, pkt, len);
