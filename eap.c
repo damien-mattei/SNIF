@@ -279,6 +279,7 @@ void DecodeEapol(u_int8_t * pkt, u_int32_t len)
       SETCOLOR(DATA_LINK_LAYER_COLOR);
     }
 
+    OneLineKeep(1); /* with -1: the kind of key and the message of the handshake */
     printf("EAPOL ");
 
     if(len < sizeof(EtherEapol))
