@@ -78,6 +78,8 @@
 
 #include "rtp.h"
 
+#include "sflow.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -313,6 +315,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if (dp == WSD_PORT) {
       DecodeWSD(data, dsize);
+    }
+    else if (((sp == SFLOW_PORT) || (dp == SFLOW_PORT)) && IsSFlow(data, dsize)) {
+      DecodeSFlow(data, dsize);
     }
     else if ((sp == LDP_PORT) || (dp == LDP_PORT)) {
       DecodeLDP(data, dsize);

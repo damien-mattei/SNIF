@@ -72,7 +72,7 @@ applications : DNS, mDNS, LLMNR, DHCP, DHCPv6, NTP, SSDP, TLS (server name,
                versions, key exchange, certificate), QUIC, HTTP, SIP, RTSP,
                SMTP, FTP, POP3, IMAP, SSH, Telnet, SNMP, syslog, TFTP,
                NetBIOS, SMB, LDAP, Kerberos, RADIUS, STUN/TURN, NetFlow (v1,
-               v5, v6, v7, v9), IPFIX, RTP/RTCP (and SRTP/SRTCP headers),
+               v5, v6, v7, v9), IPFIX, sFlow, RTP/RTCP (and SRTP/SRTCP headers),
                MQTT, CoAP,
                ONC RPC/NFS, RDP, VNC, Modbus/TCP, WS-Discovery, Tuya
                (smart devices), Dropbox LAN sync
