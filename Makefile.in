@@ -112,19 +112,19 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
 	isis.$(OBJEXT) flow.$(OBJEXT) ldp.$(OBJEXT) rtp.$(OBJEXT) \
-	sflow.$(OBJEXT) pppserial.$(OBJEXT) slip.$(OBJEXT) \
-	wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
-	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
-	loopback.$(OBJEXT) raw.$(OBJEXT) i4lrawip.$(OBJEXT) \
-	i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) arp.$(OBJEXT) ip.$(OBJEXT) \
-	ipv6.$(OBJEXT) ipx.$(OBJEXT) ethlb.$(OBJEXT) icmp.$(OBJEXT) \
-	icmp6.$(OBJEXT) igmp.$(OBJEXT) stp.$(OBJEXT) tcp.$(OBJEXT) \
-	udp.$(OBJEXT) dns.$(OBJEXT) dhcp.$(OBJEXT) ntp.$(OBJEXT) \
-	ssdp.$(OBJEXT) tls.$(OBJEXT) quic.$(OBJEXT) \
-	discovery.$(OBJEXT) slow.$(OBJEXT) mpls.$(OBJEXT) \
-	homeplug.$(OBJEXT) iproto.$(OBJEXT) routing.$(OBJEXT) \
-	tunnel.$(OBJEXT) vpn.$(OBJEXT) text.$(OBJEXT) \
-	services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
+	sflow.$(OBJEXT) ptp.$(OBJEXT) pppserial.$(OBJEXT) \
+	slip.$(OBJEXT) wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) \
+	pflog.$(OBJEXT) oldpflog.$(OBJEXT) eap.$(OBJEXT) \
+	pppoe.$(OBJEXT) loopback.$(OBJEXT) raw.$(OBJEXT) \
+	i4lrawip.$(OBJEXT) i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) \
+	arp.$(OBJEXT) ip.$(OBJEXT) ipv6.$(OBJEXT) ipx.$(OBJEXT) \
+	ethlb.$(OBJEXT) icmp.$(OBJEXT) icmp6.$(OBJEXT) igmp.$(OBJEXT) \
+	stp.$(OBJEXT) tcp.$(OBJEXT) udp.$(OBJEXT) dns.$(OBJEXT) \
+	dhcp.$(OBJEXT) ntp.$(OBJEXT) ssdp.$(OBJEXT) tls.$(OBJEXT) \
+	quic.$(OBJEXT) discovery.$(OBJEXT) slow.$(OBJEXT) \
+	mpls.$(OBJEXT) homeplug.$(OBJEXT) iproto.$(OBJEXT) \
+	routing.$(OBJEXT) tunnel.$(OBJEXT) vpn.$(OBJEXT) \
+	text.$(OBJEXT) services.$(OBJEXT) misc.$(OBJEXT) gre.$(OBJEXT)
 snif_OBJECTS = $(am_snif_OBJECTS)
 snif_LDADD = $(LDADD)
 AM_V_P = $(am__v_P_@AM_V@)
@@ -156,15 +156,15 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/chdlc.Po \
 	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
 	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
 	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
-	./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
-	./$(DEPDIR)/rtp.Po ./$(DEPDIR)/services.Po \
-	./$(DEPDIR)/sflow.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
-	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
-	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
-	./$(DEPDIR)/text.Po ./$(DEPDIR)/tls.Po \
-	./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/tunnel.Po \
-	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/vpn.Po \
-	./$(DEPDIR)/wifi.Po
+	./$(DEPDIR)/ptp.Po ./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po \
+	./$(DEPDIR)/routing.Po ./$(DEPDIR)/rtp.Po \
+	./$(DEPDIR)/services.Po ./$(DEPDIR)/sflow.Po \
+	./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po ./$(DEPDIR)/slow.Po \
+	./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po \
+	./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po ./$(DEPDIR)/text.Po \
+	./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po \
+	./$(DEPDIR)/tunnel.Po ./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po \
+	./$(DEPDIR)/vpn.Po ./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -370,6 +370,7 @@ flow.c flow.h \
 ldp.c ldp.h \
 rtp.c rtp.h \
 sflow.c sflow.h \
+ptp.c ptp.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -574,6 +575,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppctl.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppoe.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pppserial.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ptp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/quic.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/raw.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/routing.Po@am__quote@ # am--include-marker
@@ -989,6 +991,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/pppctl.Po
 	-rm -f ./$(DEPDIR)/pppoe.Po
 	-rm -f ./$(DEPDIR)/pppserial.Po
+	-rm -f ./$(DEPDIR)/ptp.Po
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/routing.Po
@@ -1093,6 +1096,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/pppctl.Po
 	-rm -f ./$(DEPDIR)/pppoe.Po
 	-rm -f ./$(DEPDIR)/pppserial.Po
+	-rm -f ./$(DEPDIR)/ptp.Po
 	-rm -f ./$(DEPDIR)/quic.Po
 	-rm -f ./$(DEPDIR)/raw.Po
 	-rm -f ./$(DEPDIR)/routing.Po

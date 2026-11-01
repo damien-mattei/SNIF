@@ -21,6 +21,7 @@ flow.c flow.h \
 ldp.c ldp.h \
 rtp.c rtp.h \
 sflow.c sflow.h \
+ptp.c ptp.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
