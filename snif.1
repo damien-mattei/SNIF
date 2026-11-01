@@ -14,7 +14,7 @@ snif \- Sniff Network Interface's Frames, a packet decoder with one color by lay
 [\fB\-i\fR \fIinterface\fR]
 [\fB\-f\fR \fIfile\fR]
 [\fB\-c\fR \fIcount\fR]
-[\fB\-w\fR \fIfile\fR]
+[\fB\-w\fR \fIfile\fR [\fB\-C\fR \fIsize\fR] [\fB\-G\fR \fIseconds\fR] [\fB\-W\fR \fIcount\fR]]
 [\fB\-Q\fR \fIin\fR|\fIout\fR|\fIinout\fR]
 [\fB\-B\fR \fIsize\fR]
 [\fB\-D#I\fR]
@@ -61,6 +61,33 @@ or Wireshark; they are not shown, unless
 is given too. With
 .B \-f
 and a filter, it extracts packets from a file.
+.TP
+.BI \-C " size"
+With
+.BR \-w ,
+start a new file above
+.I size
+million bytes: file, file1, file2...
+.TP
+.BI \-G " seconds"
+With
+.BR \-w ,
+start a new file every
+.I seconds
+(time of the packets); the name may hold the time, as in
+.BR strftime (3):
+.IR dump\-%H%M%S.pcap .
+.TP
+.BI \-W " count"
+With
+.BR \-C ,
+keep a ring of
+.I count
+files, the oldest being overwritten; with
+.B \-G
+alone, stop after
+.I count
+files.
 .TP
 .B \-\-print
 With

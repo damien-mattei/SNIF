@@ -59,6 +59,8 @@
 
 #include <getopt.h> /* getopt_long, for --tcpdump */
 
+#include <limits.h> /* PATH_MAX */
+
 #include <search.h> /* added for hash tables */
 
 #include <signal.h> /* added for clean exit */
@@ -935,6 +937,108 @@ void DumpHex(u_char * pkt, u_int32_t len)
 }
 
 
+/*
+ * Function: OpenDumpFile(time_t, int)
+ *
+ * Purpose: open a file of -w, named as tcpdump does: the time in the name
+ *          with -G (strftime), the number of the file after it with -C
+ *          (from the second one) or -W (on as many digits as its value)
+ *
+ * Arguments: t => the time of the file, for -G
+ *            index => its number
+ *
+ * Returns: void function
+ */
+static void OpenDumpFile(time_t t, int index)
+{
+  char base[PATH_MAX], name[PATH_MAX + 16];
+  struct tm tm;
+  int width = 0, n;
+
+  if (rotate_seconds > 0) {
+    localtime_r(&t, &tm);
+    if (strftime(base, sizeof(base), pcap_outfile, &tm) == 0) {
+      fprintf(stderr, "-w %s: name too long\n", pcap_outfile);
+      CleanExit(1);
+    }
+  }
+  else {
+    snprintf(base, sizeof(base), "%s", pcap_outfile);
+  }
+
+  if (rotate_size > 0) { /* only -C numbers the files */
+    for (n = rotate_count; n > 0; n /= 10) {
+      width++;
+    }
+  }
+
+  if ((index == 0) && (width == 0)) {
+    snprintf(name, sizeof(name), "%s", base);
+  }
+  else {
+    snprintf(name, sizeof(name), "%s%0*d", base, width, index);
+  }
+
+  dumper = pcap_dump_open(descr, name);
+  if (dumper == NULL) {
+    fprintf(stderr, "-w %s: %s\n", name, pcap_geterr(descr));
+    CleanExit(1);
+  }
+}
+
+
+/*
+ * Function: RotateDumpFile(struct pcap_pkthdr *)
+ *
+ * Purpose: before a packet is written: open the first file, and change of
+ *          file every -G seconds or when it holds more than -C million
+ *          bytes; the time is the one of the packets (also with -f)
+ *
+ * Arguments: pkthdr => the packet
+ *
+ * Returns: 1 when -G and -W have reached the last file, snif stops
+ */
+static int RotateDumpFile(struct pcap_pkthdr * pkthdr)
+{
+  static time_t file_start = 0;
+  static int size_index = 0, time_files = 0;
+
+  if (write_finished) {
+    return 1;
+  }
+
+  if (dumper == NULL) { /* the first packet */
+    file_start = pkthdr->ts.tv_sec;
+    OpenDumpFile(file_start, 0);
+    return 0;
+  }
+
+  if ((rotate_seconds > 0) && (pkthdr->ts.tv_sec - file_start >= rotate_seconds)) {
+    time_files++;
+    if ((rotate_count > 0) && (time_files >= rotate_count)) {
+      fprintf(stderr, "Maximum file limit reached: %d\n", rotate_count);
+      write_finished = 1;
+      pcap_breakloop(descr);
+      return 1;
+    }
+    pcap_dump_close(dumper);
+    size_index = 0;
+    file_start = pkthdr->ts.tv_sec;
+    OpenDumpFile(file_start, 0);
+  }
+  else if ((rotate_size > 0) && ((unsigned long long) pcap_dump_ftell(dumper) > rotate_size)) {
+    size_index++;
+    if ((rotate_count > 0) && (size_index >= rotate_count)) {
+      size_index = 0; /* a ring of files: the oldest is overwritten */
+    }
+    pcap_dump_close(dumper);
+    OpenDumpFile(file_start, size_index);
+  }
+
+  return 0;
+}
+
+
 /* symbol of each layer, in UTF-8 and in ASCII, by color (-S) */
 static const struct {
   int color;
@@ -1260,7 +1364,10 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     u_int32_t cap_len;      /* capture length value */
 
-    if (dumper != NULL) { /* -w: the packet goes to the file */
+    if (pcap_outfile != NULL) { /* -w: the packet goes to the file */
+      if (RotateDumpFile(pkthdr) != 0) {
+	return; /* -G -W: the last file is full */
+      }
       pcap_dump((u_char *) dumper, pkthdr, pkt);
       if (!print_written) {
 	packets_captured++;
@@ -1461,7 +1568,7 @@ void ParseCmdLine(int argc, char *argv[])
     { NULL, 0, NULL, 0 }
   };
 
-  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:I", long_options, NULL)) != EOF)
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:IC:G:W:", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1482,6 +1589,9 @@ void ParseCmdLine(int argc, char *argv[])
 	printf("      packet, -tttt: date and time, -ttttt: since the first packet\n");
 	printf(" -1 : one line by packet: the main line of each layer, in its color\n");
 	printf(" -w file : write the packets to a pcap file (shown too with --print)\n");
+	printf(" -C size : with -w, a new file every size million bytes (file, file1, file2...)\n");
+	printf(" -G seconds : with -w, a new file every seconds (name with strftime: dump-%%H%%M%%S.pcap)\n");
+	printf(" -W count : with -C, a ring of count files; with -G, stop after count files\n");
 	printf(" -D : list the interfaces\n");
 	printf(" -Q in|out|inout : the direction of the packets captured\n");
 	printf(" -# (--number) : the number of each packet\n");
@@ -1585,6 +1695,30 @@ void ParseCmdLine(int argc, char *argv[])
 	monitor_mode = 1;
 	break;
 
+      case 'C': /* in millions of bytes, as tcpdump */
+	rotate_size = strtoull(optarg, NULL, 10) * 1000000ULL;
+	if (rotate_size == 0) {
+	  fprintf(stderr, "-C: a size in millions of bytes, not %s\n", optarg);
+	  exit(1);
+	}
+	break;
+
+      case 'G':
+	rotate_seconds = atoi(optarg);
+	if (rotate_seconds <= 0) {
+	  fprintf(stderr, "-G: a number of seconds, not %s\n", optarg);
+	  exit(1);
+	}
+	break;
+
+      case 'W':
+	rotate_count = atoi(optarg);
+	if (rotate_count <= 0) {
+	  fprintf(stderr, "-W: a number of files, not %s\n", optarg);
+	  exit(1);
+	}
+	break;
+
       case 'B':
 	buffer_size = atoi(optarg);
 	if (buffer_size <= 0) {
@@ -1676,6 +1810,11 @@ void ParseCmdLine(int argc, char *argv[])
 
       }
     }
+
+  if (((rotate_size > 0) || (rotate_seconds > 0) || (rotate_count > 0)) && (pcap_outfile == NULL)) {
+    fprintf(stderr, "-C, -G and -W need -w\n");
+    exit(1);
+  }
 
   /* the terminals with 256 colors say it in the environment */
   if (!only_8_colors) {
@@ -2765,12 +2904,11 @@ int main(int argc, char **argv) {
       printf("FILTER: %s\n", capture_filter);
     }
 
-    /* -w: the packets kept go to a pcap file */
+    /* -w: the packets kept go to a pcap file, opened at once unless its
+     * name holds the time of the first packet (-G) */
     if (pcap_outfile != NULL) {
-      dumper = pcap_dump_open(descr, pcap_outfile);
-      if (dumper == NULL) {
-	fprintf(stderr, "-w %s: %s\n", pcap_outfile, pcap_geterr(descr));
-	CleanExit(1);
+      if (rotate_seconds == 0) {
+	OpenDumpFile(0, 0);
       }
       printf("WRITING: %s%s\n", pcap_outfile, print_written ? "" : " (packets not shown, --print to show them)");
     }
@@ -3055,7 +3193,7 @@ int main(int argc, char **argv) {
 
  
     /* loop until un error occured or packet count is reached */
-    if (pcap_loop(descr,pkt_count,(pcap_handler) ProcessPacket,NULL) < 0) {
+    if (pcap_loop(descr,pkt_count,(pcap_handler) ProcessPacket,NULL) == PCAP_ERROR) {
       
       fprintf(stderr,"pcap_loop: %s\n", pcap_geterr(descr));
       CleanExit(1);

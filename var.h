@@ -78,6 +78,14 @@ int direction_set = 0; /* -Q given */
 
 int monitor_mode = 0; /* Wi-Fi monitor mode (-I) */
 
+unsigned long long rotate_size = 0; /* a new file above these bytes (-C) */
+
+int rotate_seconds = 0; /* a new file every these seconds (-G) */
+
+int rotate_count = 0; /* number of files (-W) */
+
+int write_finished = 0; /* -G -W: the last file is full */
+
 unsigned long packets_captured = 0; /* decoded by snif */
 
 int send_esc = 1; /* send escape sequence to terminal

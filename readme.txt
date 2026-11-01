@@ -21,6 +21,9 @@ common options:
        DNS query 0x1a2b  Question: apple.com A
 
 -w file : write the packets to a pcap file (not shown, unless --print)
+     -C size : a new file every size million bytes;  -G seconds : a new
+     file every seconds (name with strftime);  -W count : a ring of files
+     with -C, a stop after count files with -G
 
 -D : list the interfaces;  -Q in|out|inout : direction of the packets;
 -# : number of each packet;  -B size : kernel buffer in KiB
