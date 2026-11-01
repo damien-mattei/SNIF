@@ -314,14 +314,14 @@ typedef struct {
   u_int8_t addr[2][16];
   u_int16_t port[2];
   u_int32_t base[2];
-  u_int8_t known[2];
+  u_int8_t known;
 } TCPConnection;
 
 static TCPConnection tcp_connections[TCP_CONN_SIZE];
 
 
-/* the numbers of a segment, relative to the first ones of its
- * connection in each direction (as tcpdump without -S) */
+/* the numbers of a segment, relative to the start of its connection
+ * (as tcpdump without -S) */
 typedef struct {
   u_int32_t seq, ack;
   int seq_relative, ack_relative;
@@ -333,9 +333,9 @@ typedef struct {
  * Function: RelativeNumbers(TCPHdr *, IPHdr *, IP6RawHdr *, TCPNumbers *)
  *
  * Purpose: give the sequence and acknowledgement numbers relative to the
- *          start of the connection: the first segment seen in a
- *          direction keeps its absolute numbers and sets the base (a SYN
- *          starts a new connection on the same ports)
+ *          start of the connection, as tcpdump: the first segment with
+ *          an ACK, or a SYN and ACK, keeps its absolute numbers and sets
+ *          the base of the two directions
  *
  * Arguments: tcptr => the TCP header
  *            iptr, ip6ptr => the IP header (one of them)
@@ -357,7 +357,8 @@ static void RelativeNumbers(TCPHdr * tcptr, IPHdr * iptr, IP6RawHdr * ip6ptr, TC
   n->seq_relative = n->ack_relative = 0;
   n->sack_base = 0;
 
-  if (absolute_seq) {
+  /* as tcpdump: a segment without ACK keeps its absolute numbers (SYN, RST) */
+  if (absolute_seq || !(flags & TH_ACK)) {
     return;
   }
 
@@ -414,29 +415,19 @@ static void RelativeNumbers(TCPHdr * tcptr, IPHdr * iptr, IP6RawHdr * ip6ptr, TC
     c->port[!dir] = dp;
   }
 
-  if (flags & TH_SYN) { /* the start of a connection, maybe on old ports */
-    if (!(flags & TH_ACK)) {
-      c->known[0] = c->known[1] = 0;
-    }
-    else {
-      c->known[dir] = 0;
-    }
-  }
-
-  if (!c->known[dir]) { /* the first segment in this direction: absolute */
+  /* a new connection, or a SYN that restarts one on the same ports: the
+   * bases are this sequence number and what the other end has sent */
+  if (!c->known || (flags & TH_SYN)) {
     c->base[dir] = n->seq;
-    c->known[dir] = 1;
+    c->base[!dir] = n->ack - 1;
+    c->known = 1;
     return;
   }
 
   n->seq -= c->base[dir];
-  n->seq_relative = 1;
-
-  if (c->known[!dir]) { /* the acknowledged bytes come from the other end */
-    n->ack -= c->base[!dir];
-    n->ack_relative = 1;
-    n->sack_base = c->base[!dir];
-  }
+  n->ack -= c->base[!dir];
+  n->seq_relative = n->ack_relative = 1;
+  n->sack_base = c->base[!dir];
 }
 
 

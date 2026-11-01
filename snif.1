@@ -116,8 +116,8 @@ Show the number of each packet.
 Show the absolute TCP sequence and acknowledgement numbers. By default,
 as in
 .BR tcpdump ,
-they are relative to the first ones seen in each direction of the
-connection (1, 518...), the first segment keeping its absolute numbers;
+they are relative to the start of the connection (1, 518...): the segments
+without ACK and the first segment seen keep their absolute numbers;
 in verbose mode the absolute numbers are added in parentheses.
 .TP
 .B \-v
