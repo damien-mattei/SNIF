@@ -2936,6 +2936,11 @@ int main(int argc, char **argv) {
 
 	  printf("Data link type is IEEE 802.11.\n");
 
+	    /* --tcpdump hides the link layer, but here it is what can be read */
+	    if (tcpdump_mode) {
+	      dump_link_layer = 1;
+	    }
+
             grinder = DecodeIEEE80211Pkt;
             break;
 #endif
@@ -2944,6 +2949,10 @@ int main(int argc, char **argv) {
         case DLT_IEEE802_11_RADIO:   /* Wi-Fi monitor mode */
 
 	  printf("Data link type is IEEE 802.11 with radiotap header.\n");
+
+	    if (tcpdump_mode) {
+	      dump_link_layer = 1;
+	    }
 
             grinder = DecodeRadiotapPkt;
             break;

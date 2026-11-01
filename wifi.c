@@ -585,6 +585,7 @@ void DecodeIEEE80211Frame(u_int8_t * pkt, u_int32_t len)
       printf("  seq %d frag %d", get_le16(pkt + 22) >> 4, get_le16(pkt + 22) & 0x0F);
     }
 
+    OneLineKeep(2); /* with -1: the addresses and the next line (SSID...) too */
     printf("\n");
   }
 
@@ -814,6 +815,7 @@ void DecodeRadiotapPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
     if (rflags & RADIOTAP_F_BADFCS) {
       printf("  bad FCS");
     }
+    OneLineKeep(1); /* with -1: the line of the 802.11 frame too */
     printf("\n");
   }
 
