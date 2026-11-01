@@ -122,6 +122,22 @@ in verbose mode the absolute numbers are added in parentheses.
 .TP
 .B \-v
 Verbose mode: all the fields of the headers, the options, the flags.
+.B \-vv
+and
+.B \-vvv
+are accepted and show the same.
+.TP
+.B \-A
+Show each packet in ASCII after its decoding, without its link layer
+header, as
+.BR "tcpdump \-A" .
+.TP
+.BI \-F " file"
+Read the capture filter from a file; from a # to the end of a line is a
+comment.
+.TP
+.BI \-Z " user"
+When started as root, run as this user once the capture is open.
 .TP
 .B \-p
 Do not put the interface into promiscuous mode.

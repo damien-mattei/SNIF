@@ -86,6 +86,12 @@ int rotate_count = 0; /* number of files (-W) */
 
 int write_finished = 0; /* -G -W: the last file is full */
 
+int dump_ascii = 0; /* dump the packets in ASCII (-A) */
+
+char * filter_file = NULL; /* read the capture filter from a file (-F) */
+
+char * drop_user = NULL; /* run as this user once the capture is open (-Z) */
+
 unsigned long packets_captured = 0; /* decoded by snif */
 
 int send_esc = 1; /* send escape sequence to terminal

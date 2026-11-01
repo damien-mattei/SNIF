@@ -25,6 +25,9 @@ common options:
      file every seconds (name with strftime);  -W count : a ring of files
      with -C, a stop after count files with -G
 
+-A : dump the packets in ASCII;  -F file : read the filter from a file;
+-Z user : started as root, run as this user once the capture is open
+
 -D : list the interfaces;  -Q in|out|inout : direction of the packets;
 -# : number of each packet;  -B size : kernel buffer in KiB
 

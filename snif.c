@@ -61,6 +61,10 @@
 
 #include <limits.h> /* PATH_MAX */
 
+#include <pwd.h> /* getpwnam, for -Z */
+
+#include <grp.h> /* initgroups */
+
 #include <search.h> /* added for hash tables */
 
 #include <signal.h> /* added for clean exit */
@@ -891,6 +895,62 @@ void printResolvedIP6(struct in6_addr * addr) {
 
 
 /*
+ * Function: DumpASCII(const u_char *, u_int32_t)
+ *
+ * Purpose: -A: print a packet in ASCII, without its link layer header, as
+ *          tcpdump -A: what is not printable becomes a dot, so that it
+ *          cannot drive the terminal, the lines of the text are kept
+ *
+ * Arguments: pkt, len => the packet
+ *
+ * Returns: void function
+ */
+static void DumpASCII(const u_char * pkt, u_int32_t len)
+{
+  u_int32_t i;
+
+  if (send_esc) {
+    NORMALMODE();
+  }
+
+  for (i = 0; i < len; i++) {
+    if ((pkt[i] == '\r') && (i + 1 < len) && (pkt[i + 1] == '\n')) {
+      continue;
+    }
+    putchar((((pkt[i] >= 0x20) && (pkt[i] < 0x7f)) || (pkt[i] == '\n') || (pkt[i] == '\t')) ? pkt[i] : '.');
+  }
+  putchar('\n');
+}
+
+
+/* the length of the link layer header of a packet, 0 when it is not known */
+static u_int32_t LinkHeaderLength(const u_char * pkt, u_int32_t len)
+{
+  u_int32_t off;
+
+  switch (pcap_datalink(descr)) {
+  case DLT_EN10MB:
+    for (off = 14; (off + 4 <= len) && (off >= 2)
+	   && ((((pkt[off - 2] << 8) | pkt[off - 1]) == 0x8100) || (((pkt[off - 2] << 8) | pkt[off - 1]) == 0x88a8));
+	 off += 4) {
+      ; /* VLAN tags */
+    }
+    return off;
+  case DLT_LINUX_SLL:
+    return 16;
+#ifdef DLT_LINUX_SLL2
+  case DLT_LINUX_SLL2:
+    return 20;
+#endif
+  case DLT_NULL:
+  case DLT_LOOP:
+    return 4;
+  }
+  return 0;
+}
+
+
+/*
  * Function: DumpHex(u_char *, u_int32_t)
  *
  * Purpose: dump the captured packet, 16 bytes a line: offset, bytes in
@@ -1451,6 +1511,13 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
       DumpHex(pkt, pkthdr->caplen);
     }
 
+    if (dump_ascii) {
+      u_int32_t lhl = LinkHeaderLength(pkt, pkthdr->caplen);
+
+      DumpASCII(pkt + ((lhl <= pkthdr->caplen) ? lhl : pkthdr->caplen),
+		pkthdr->caplen - ((lhl <= pkthdr->caplen) ? lhl : pkthdr->caplen));
+    }
+
     if (one_line) {
       fflush(stdout);
     }
@@ -1545,6 +1612,106 @@ static void ListInterfaces(void)
 
 
 /*
+ * Function: ReadFilterFile(const char *)
+ *
+ * Purpose: read a capture filter from a file (-F); from a # to the end of
+ *          the line is a comment, as in tcpdump
+ *
+ * Arguments: name => the file
+ *
+ * Returns: the filter
+ */
+static char * ReadFilterFile(const char * name)
+{
+  FILE * f = fopen(name, "r");
+  size_t len = 0, size = 4096, n;
+  int comment = 0;
+  char * text;
+  int c;
+
+  if (f == NULL) {
+    perror(name);
+    exit(1);
+  }
+
+  text = malloc(size);
+  if (text == NULL) {
+    fprintf(stderr, "Error: Out of memory for the capture filter.\n");
+    exit(1);
+  }
+
+  while ((c = getc(f)) != EOF) {
+    if (c == '#') {
+      comment = 1;
+    }
+    else if (c == '\n') {
+      comment = 0;
+    }
+    if (len + 2 > size) {
+      char * bigger = realloc(text, size *= 2);
+
+      if (bigger == NULL) {
+	fprintf(stderr, "Error: Out of memory for the capture filter.\n");
+	exit(1);
+      }
+      text = bigger;
+    }
+    if (comment || (c == '\n') || (c == '\r') || (c == '\t') || (c == ' ')) {
+      c = ' ';
+      if ((len == 0) || (text[len - 1] == ' ')) { /* only one space */
+	continue;
+      }
+    }
+    text[len++] = (char) c;
+  }
+  text[len] = '\0';
+  fclose(f);
+
+  /* the spaces at the end of the file */
+  for (n = len; (n > 0) && (text[n - 1] == ' '); n--) {
+    text[n - 1] = '\0';
+  }
+
+  return text;
+}
+
+
+/*
+ * Function: DropPrivileges(const char *)
+ *
+ * Purpose: -Z: become an ordinary user once the capture is open, the
+ *          decoders of untrusted packets then run without root (without
+ *          root, as in tcpdump, there is nothing to give up)
+ *
+ * Arguments: user => the name of the user
+ *
+ * Returns: void function
+ */
+static void DropPrivileges(const char * user)
+{
+  struct passwd * pw;
+
+  if (getuid() != 0) {
+    fprintf(stderr, "-Z %s: not running as root, nothing to give up\n", user);
+    return;
+  }
+
+  pw = getpwnam(user);
+  if (pw == NULL) {
+    fprintf(stderr, "-Z: unknown user %s\n", user);
+    CleanExit(1);
+  }
+
+  if ((initgroups(pw->pw_name, pw->pw_gid) != 0) || (setgid(pw->pw_gid) != 0) || (setuid(pw->pw_uid) != 0)) {
+    fprintf(stderr, "-Z %s: %s\n", user, strerror(errno));
+    CleanExit(1);
+  }
+
+  fprintf(stderr, "Running as %s (uid %d)\n", user, (int) getuid());
+}
+
+
+/*
  * Function: ParseCmdLine(int, char *)
  *
  * Purpose:  Parse command line args
@@ -1568,7 +1735,7 @@ void ParseCmdLine(int argc, char *argv[])
     { NULL, 0, NULL, 0 }
   };
 
-  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:IC:G:W:", long_options, NULL)) != EOF)
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:IC:G:W:AF:Z:", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1580,7 +1747,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -h : help\n");
 	printf(" -i interface : specify interface (ex: -i eth0)\n");
 	printf(" -f file : read packets from a pcap (tcpdump) file instead of an interface\n");
-	printf(" -v : verbose mode\n");
+	printf(" -v : verbose mode (-vv and -vvv are accepted)\n");
 	printf(" -c n : capture n packet(s) and exit\n");
 	printf(" -p : don't put the interface into promiscuous mode\n");
 	printf(" -e : don't show ethernet vendor codes\n");
@@ -1609,6 +1776,9 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -r : resolve IP address in hostname\n");
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
 	printf(" -x : dump the packets in hexadecimal and ASCII\n");
+	printf(" -A : dump the packets in ASCII, without their link layer header\n");
+	printf(" -F file : read the capture filter from a file (# starts a comment)\n");
+	printf(" -Z user : run as this user once the capture is open (when started as root)\n");
 	printf(" -8 : use only the 8 basic colors, even if the terminal knows 256 colors\n");
 	printf(" -T rtp : decode the UDP datagrams as RTP and RTCP (otherwise recognized by their header)\n");
 	printf("\n filter expression : only the packets matching it are shown, in the\n");
@@ -1616,8 +1786,20 @@ void ParseCmdLine(int argc, char *argv[])
 	CleanExit(0);
 	break;
 		  
-      case 'v':
-	verb = 1;
+      case 'v': /* -vv and -vvv are accepted, as in tcpdump */
+	verb++;
+	break;
+
+      case 'A':
+	dump_ascii = 1;
+	break;
+
+      case 'F':
+	filter_file = optarg;
+	break;
+
+      case 'Z':
+	drop_user = optarg;
 	break;
 	
       case 'i':
@@ -1848,8 +2030,16 @@ void ParseCmdLine(int argc, char *argv[])
     symbols_utf8 = LocaleIsUTF8();
   }
 
+  /* -F: the capture filter is in a file; as tcpdump, it wins over the
+   * arguments */
+  if (filter_file != NULL) {
+    if (optind < argc) {
+      fprintf(stderr, "Warning: -F, the expression on the command line is ignored\n");
+    }
+    capture_filter = ReadFilterFile(filter_file);
+  }
   /* the remaining arguments make the capture filter, as for tcpdump */
-  if (optind < argc) {
+  else if (optind < argc) {
 
     size_t flen = 0;
     int i;
@@ -2902,6 +3092,11 @@ int main(int argc, char **argv) {
       pcap_freecode(&filter_code);
 
       printf("FILTER: %s\n", capture_filter);
+    }
+
+    /* -Z: the capture is open, root is no more needed */
+    if (drop_user != NULL) {
+      DropPrivileges(drop_user);
     }
 
     /* -w: the packets kept go to a pcap file, opened at once unless its
