@@ -103,6 +103,11 @@ void SigWinChHandler(int); /* handler for window size change */
 #define TS_ISO          4       /* -tttt: date and time ISO 8601 */
 #define TS_SINCE_FIRST  5       /* -ttttt: since the first packet */
 
+/* the hash tables are filled to the half at most: full, a search that
+ * fails (the blocks of 36 and 28 bits of the vendors) probes all the
+ * table, it took most of the time of snif */
+#define HASH_SIZE(n) (2 * (n) + 1)
+
 #define SNAPLEN 262144 /* bytes captured per packet, as tcpdump (BUFSIZ cut the big ones) */
 
 

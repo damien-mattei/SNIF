@@ -58,6 +58,8 @@ int ts_format = TS_DEFAULT; /* format of the time stamps: number of -t */
 
 int one_line = 0; /* one line by packet (-1) */
 
+unsigned long packets_captured = 0; /* decoded by snif */
+
 int send_esc = 1; /* send escape sequence to terminal
 		   * enable color and bold text
 		   */

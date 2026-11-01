@@ -228,6 +228,36 @@ void PrintPorts(u_int16_t sp,u_int16_t dp,int color) {
  * Returns: void function
  *
  ****************************************************************************/
+/*
+ * Function: PrintCaptureStats(void)
+ *
+ * Purpose: say, as tcpdump, how many packets snif decoded and, for a live
+ *          capture, how many the kernel received and dropped: they are
+ *          dropped when snif does not read them fast enough (the
+ *          display is the slowest part, one line by packet with -1 helps)
+ *
+ * Returns: void function
+ */
+static void PrintCaptureStats(void)
+{
+  struct pcap_stat ps;
+
+  if (send_esc) {
+    fflush(stdout);
+  }
+
+  fprintf(stderr, "\n%lu packet%s captured\n", packets_captured, (packets_captured == 1) ? "" : "s");
+
+  if ((pcap_infile == NULL) && (pcap_stats(descr, &ps) == 0)) {
+    fprintf(stderr, "%u packet%s received by filter\n", ps.ps_recv, (ps.ps_recv == 1) ? "" : "s");
+    fprintf(stderr, "%u packet%s dropped by kernel\n", ps.ps_drop, (ps.ps_drop == 1) ? "" : "s");
+    if (ps.ps_ifdrop) {
+      fprintf(stderr, "%u packet%s dropped by interface\n", ps.ps_ifdrop, (ps.ps_ifdrop == 1) ? "" : "s");
+    }
+  }
+}
+
+
 void CleanExit(int exit_val)
 {
 
@@ -237,8 +267,11 @@ void CleanExit(int exit_val)
   }
 
   /* close pcap */
-  if(descr)
+  if(descr) {
+    PrintCaptureStats();
     pcap_close(descr);
+    descr = NULL;
+  }
   
   fprintf(stderr,"\nSnif exiting\n");
   
@@ -1164,6 +1197,8 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     outgoing_pkt = 0; /* set by the link layer decoder */
 
+    packets_captured++;
+
     /* the link layer decoders set their color only after the addresses
      * in bright, its symbol is shown here unless the layer is hidden */
     symbol_color = -1;
@@ -1405,6 +1440,12 @@ void ParseCmdLine(int argc, char *argv[])
   /* the terminals with 256 colors say it in the environment */
   if (!only_8_colors) {
     colors256 = Terminal256Colors();
+  }
+
+  /* one line by packet: the vendors of the cards are on the detail
+   * lines, left out, no need to search them */
+  if (one_line) {
+    show_eth_vend = 0;
   }
 
   /* go through the color macros for the colors, the symbols or the
@@ -2099,7 +2140,7 @@ int main(int argc, char **argv) {
 
     if ((text_port) || (show_eth_vend)) { /* do we really need hash table? */
 
-      int rv = hcreate(nel);
+      int rv = hcreate(HASH_SIZE(nel));
 
       fprintf(stderr,"number of elements = %d\n",nel);
       fprintf(stderr,"hcreate return value = %d\n",rv);
@@ -2174,7 +2215,7 @@ int main(int argc, char **argv) {
 	/* initiated at first run  */
 	memset (&htab_ports, 0, sizeof (struct hsearch_data)); /* must be filled with 0 */
 
-	rv = hcreate_r (nel, &htab_ports);
+	rv = hcreate_r (HASH_SIZE(nel), &htab_ports);
 	
 	fprintf(stderr,"number of elements = %d\n",nel);
 	fprintf(stderr,"hcreate_r return value for htab_ports = %d\n",rv);
@@ -2224,7 +2265,7 @@ int main(int argc, char **argv) {
 	/* initiated at first run  */
 	memset (&htab_ethernet, 0, sizeof (struct hsearch_data)); /* must be filled with 0 */
 
-	rv = hcreate_r (nel, &htab_ethernet);
+	rv = hcreate_r (HASH_SIZE(nel), &htab_ethernet);
 
 	fprintf(stderr,"number of elements = %d\n",nel);
 	fprintf(stderr,"hcreate_r return value for htab_ethernet = %d\n",rv);
@@ -2676,6 +2717,7 @@ int main(int argc, char **argv) {
 
     }
 
+    CleanExit(0); /* the statistics of the capture */
     return 0;
   
 }
