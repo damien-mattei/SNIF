@@ -1436,7 +1436,7 @@ static int ParseHexSearch(const char * s, u_char * out)
 
 /* PayloadOffset
  * where the data of the packet begin, after the headers of the link, IP and
- * TCP or UDP layers; the end of the headers for the other protocols
+ * TCP or UDP layers; the end of the packet (nothing to search) for the others
  */
 static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
 {
@@ -1483,7 +1483,7 @@ static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
     }
   }
   else {
-    return off; /* ARP, other protocols: everything after the link layer */
+    return len; /* ARP, other protocols: no data to search */
   }
   if (off > len) {
     return len;
@@ -1493,6 +1493,9 @@ static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
   }
   else if (proto == 17) { /* UDP */
     off += 8;
+  }
+  else {
+    return len; /* ICMP, tunnels...: not TCP or UDP, nothing to search */
   }
   return (off > len) ? len : off;
 }
