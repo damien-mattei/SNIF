@@ -242,9 +242,7 @@ static void PrintCaptureStats(void)
 {
   struct pcap_stat ps;
 
-  if (send_esc) {
-    fflush(stdout);
-  }
+  fflush(NULL); /* the packets first, also through a pipe */
 
   fprintf(stderr, "\n%lu packet%s captured\n", packets_captured, (packets_captured == 1) ? "" : "s");
 
