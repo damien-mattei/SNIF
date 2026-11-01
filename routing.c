@@ -172,7 +172,8 @@ static u_int32_t PrintPrefix(const u_int8_t * p, u_int32_t n, int ipv6)
 /*
  * Function: DecodeVRRP(u_int8_t *, u_int32_t, int)
  *
- * Purpose: Decode a VRRP advertisement (RFC 3768 version 2, RFC 9568
+ * Purpose: Decode a CARP advertisement, recognized by its length, or a
+ *          VRRP advertisement (RFC 3768 version 2, RFC 9568
  *          version 3): the virtual router, its priority and addresses
  *
  * Arguments: pkt, len => the VRRP packet
@@ -191,6 +192,21 @@ void DecodeVRRP(u_int8_t * pkt, u_int32_t len, int ipv6)
 
   if (len < 8) {
     printf("VRRP truncated (%u bytes)\n", len);
+    return;
+  }
+
+  /* CARP of OpenBSD and pfSense uses the same protocol and address: its
+   * authentication length of 7 words is, for VRRP, 7 addresses that
+   * would not fit in its 36 bytes */
+  if ((len == CARP_LEN) && (pkt[0] == 0x21) && (pkt[3] == CARP_AUTHLEN)) {
+    printf("CARP Advertisement  VHID %u  advbase %u s  advskew %u", pkt[1], pkt[5], pkt[2]);
+    if (pkt[4]) {
+      printf("  demotion %u", pkt[4]);
+    }
+    printf("\n");
+    if (verb > 0) {
+      printf("  Counter 0x%08x%08x, HMAC SHA1 (20 bytes)\n", get_u32(pkt + 8), get_u32(pkt + 12));
+    }
     return;
   }
 

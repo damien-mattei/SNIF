@@ -26,7 +26,9 @@
 
 #define IP_PROTO_OSPF       89
 #define IP_PROTO_PIM        103
-#define IP_PROTO_VRRP       112
+#define IP_PROTO_VRRP       112     /* also CARP */
+#define CARP_LEN            36
+#define CARP_AUTHLEN        7       /* counter and HMAC, in 32 bits words */
 
 #define RIP_PORT            520
 #define RIPNG_PORT          521
