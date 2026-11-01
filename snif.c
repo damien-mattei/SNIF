@@ -1461,7 +1461,7 @@ void ParseCmdLine(int argc, char *argv[])
     { NULL, 0, NULL, 0 }
   };
 
-  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:", long_options, NULL)) != EOF)
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:I", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1486,6 +1486,7 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -Q in|out|inout : the direction of the packets captured\n");
 	printf(" -# (--number) : the number of each packet\n");
 	printf(" -B size : size of the kernel buffer in KiB\n");
+	printf(" -I : Wi-Fi monitor mode: all the frames of the channel (may cut the Wi-Fi connection)\n");
 	printf(" --absolute : absolute TCP sequence numbers (relative by default, as tcpdump)\n");
 	printf(" --tcpdump : one line by packet in the format of tcpdump, in colors, with the\n");
 	printf("      names of the hosts learned without traffic (this machine, /etc/hosts, DNS seen)\n");
@@ -1578,6 +1579,10 @@ void ParseCmdLine(int argc, char *argv[])
 	  exit(1);
 	}
 	direction_set = 1;
+	break;
+
+      case 'I':
+	monitor_mode = 1;
 	break;
 
       case 'B':
@@ -2686,8 +2691,16 @@ int main(int argc, char **argv) {
 	if (buffer_size > 0) {
 	  pcap_set_buffer_size(descr, buffer_size * 1024);
 	}
+	if (monitor_mode) { /* the 802.11 frames, with a radiotap header */
+	  pcap_set_rfmon(descr, 1);
+	}
 	status = pcap_activate(descr);
-	if (status < 0) {
+	if (status == PCAP_ERROR_RFMON_NOTSUP) {
+	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s cannot be put in monitor mode (-I)", dev);
+	  pcap_close(descr);
+	  descr = NULL;
+	}
+	else if (status < 0) {
 	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s", pcap_geterr(descr));
 	  pcap_close(descr);
 	  descr = NULL;

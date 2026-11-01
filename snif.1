@@ -17,7 +17,7 @@ snif \- Sniff Network Interface's Frames, a packet decoder with one color by lay
 [\fB\-w\fR \fIfile\fR]
 [\fB\-Q\fR \fIin\fR|\fIout\fR|\fIinout\fR]
 [\fB\-B\fR \fIsize\fR]
-[\fB\-D#\fR]
+[\fB\-D#I\fR]
 [\fIfilter expression\fR]
 .SH DESCRIPTION
 .B snif
@@ -75,6 +75,12 @@ Capture only the packets received, sent, or both.
 .TP
 .BI \-B " size"
 Size of the kernel buffer, in KiB, where the packets wait to be read.
+.TP
+.B \-I
+Wi-Fi monitor mode: the card captures all the 802.11 frames of its channel
+(beacons, probes, associations, WPA handshakes, frames of the other
+stations), with their radiotap header. It may cut the Wi-Fi connection
+during the capture, and the card must support it.
 .TP
 .BR \-# ", " \-\-number
 Show the number of each packet.

@@ -25,6 +25,9 @@ common options:
 -D : list the interfaces;  -Q in|out|inout : direction of the packets;
 -# : number of each packet;  -B size : kernel buffer in KiB
 
+-I : Wi-Fi monitor mode: all the 802.11 frames of the channel (beacons,
+     associations, WPA handshakes...); it may cut the Wi-Fi connection
+
 --absolute : absolute TCP sequence numbers; by default they are relative
      to the start of the connection, as in tcpdump (seq 1:518, ack 1)
 

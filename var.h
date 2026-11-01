@@ -76,6 +76,8 @@ int direction = 0; /* -Q in, out or inout */
 
 int direction_set = 0; /* -Q given */
 
+int monitor_mode = 0; /* Wi-Fi monitor mode (-I) */
+
 unsigned long packets_captured = 0; /* decoded by snif */
 
 int send_esc = 1; /* send escape sequence to terminal
