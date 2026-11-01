@@ -82,6 +82,8 @@
 
 #include "ptp.h"
 
+#include "ciscol2.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -317,6 +319,9 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     }
     else if (dp == WSD_PORT) {
       DecodeWSD(data, dsize);
+    }
+    else if ((sp == VQP_PORT) || (dp == VQP_PORT)) {
+      DecodeVQP(data, dsize);
     }
     else if ((sp == PTP_EVENT_PORT) || (dp == PTP_EVENT_PORT) || (sp == PTP_GENERAL_PORT) || (dp == PTP_GENERAL_PORT)) {
       DecodePTP(data, dsize);

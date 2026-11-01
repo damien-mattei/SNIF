@@ -23,6 +23,7 @@ rtp.c rtp.h \
 sflow.c sflow.h \
 ptp.c ptp.h \
 cfm.c cfm.h \
+ciscol2.c ciscol2.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \

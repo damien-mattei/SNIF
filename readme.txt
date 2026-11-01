@@ -57,7 +57,8 @@ link layer   : Ethernet (vendor of the cards), 802.3/LLC/SNAP, VLAN 802.1Q
                and QinQ, PPPoE, PPP (LCP, IPCP, IPV6CP, CCP, PAP, CHAP,
                EAP), Linux cooked captures (SLL, SLL2),
                Wi-Fi 802.11 and radiotap, EAPOL/EAP, Token Ring, FDDI,
-               Spanning Tree (STP, RSTP, MSTP, PVST+), LLDP, CDP, LACP and
+               Spanning Tree (STP, RSTP, MSTP, PVST+), LLDP, CDP, Cisco VTP,
+               DTP, UDLD and VQP, LACP and
                the slow protocols, CFM 802.1ag and Y.1731, MACsec, MPLS,
                HomePlug 1.0 and AV (power line),
                ARP/RARP

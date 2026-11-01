@@ -112,7 +112,7 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
 	isis.$(OBJEXT) flow.$(OBJEXT) ldp.$(OBJEXT) rtp.$(OBJEXT) \
-	sflow.$(OBJEXT) ptp.$(OBJEXT) cfm.$(OBJEXT) \
+	sflow.$(OBJEXT) ptp.$(OBJEXT) cfm.$(OBJEXT) ciscol2.$(OBJEXT) \
 	pppserial.$(OBJEXT) slip.$(OBJEXT) wifi.$(OBJEXT) \
 	chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
 	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
@@ -144,16 +144,17 @@ DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/cfm.Po \
-	./$(DEPDIR)/chdlc.Po ./$(DEPDIR)/dhcp.Po \
-	./$(DEPDIR)/discovery.Po ./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po \
-	./$(DEPDIR)/enc.Po ./$(DEPDIR)/ethernet.Po \
-	./$(DEPDIR)/ethlb.Po ./$(DEPDIR)/fddi.Po ./$(DEPDIR)/flow.Po \
-	./$(DEPDIR)/gre.Po ./$(DEPDIR)/homeplug.Po \
-	./$(DEPDIR)/i4lciscoip.Po ./$(DEPDIR)/i4lrawip.Po \
-	./$(DEPDIR)/icmp.Po ./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po \
-	./$(DEPDIR)/ip.Po ./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po \
-	./$(DEPDIR)/ipx.Po ./$(DEPDIR)/isis.Po ./$(DEPDIR)/ldp.Po \
-	./$(DEPDIR)/llc.Po ./$(DEPDIR)/loopback.Po ./$(DEPDIR)/misc.Po \
+	./$(DEPDIR)/chdlc.Po ./$(DEPDIR)/ciscol2.Po \
+	./$(DEPDIR)/dhcp.Po ./$(DEPDIR)/discovery.Po \
+	./$(DEPDIR)/dns.Po ./$(DEPDIR)/eap.Po ./$(DEPDIR)/enc.Po \
+	./$(DEPDIR)/ethernet.Po ./$(DEPDIR)/ethlb.Po \
+	./$(DEPDIR)/fddi.Po ./$(DEPDIR)/flow.Po ./$(DEPDIR)/gre.Po \
+	./$(DEPDIR)/homeplug.Po ./$(DEPDIR)/i4lciscoip.Po \
+	./$(DEPDIR)/i4lrawip.Po ./$(DEPDIR)/icmp.Po \
+	./$(DEPDIR)/icmp6.Po ./$(DEPDIR)/igmp.Po ./$(DEPDIR)/ip.Po \
+	./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
+	./$(DEPDIR)/isis.Po ./$(DEPDIR)/ldp.Po ./$(DEPDIR)/llc.Po \
+	./$(DEPDIR)/loopback.Po ./$(DEPDIR)/misc.Po \
 	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
 	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
 	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
@@ -373,6 +374,7 @@ rtp.c rtp.h \
 sflow.c sflow.h \
 ptp.c ptp.h \
 cfm.c cfm.h \
+ciscol2.c ciscol2.h \
 pppserial.c \
 slip.c slip.h \
 wifi.c wifi.h \
@@ -545,6 +547,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/arp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cfm.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chdlc.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ciscol2.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dhcp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/discovery.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dns.Po@am__quote@ # am--include-marker
@@ -962,6 +965,7 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/cfm.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
+	-rm -f ./$(DEPDIR)/ciscol2.Po
 	-rm -f ./$(DEPDIR)/dhcp.Po
 	-rm -f ./$(DEPDIR)/discovery.Po
 	-rm -f ./$(DEPDIR)/dns.Po
@@ -1068,6 +1072,7 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/arp.Po
 	-rm -f ./$(DEPDIR)/cfm.Po
 	-rm -f ./$(DEPDIR)/chdlc.Po
+	-rm -f ./$(DEPDIR)/ciscol2.Po
 	-rm -f ./$(DEPDIR)/dhcp.Po
 	-rm -f ./$(DEPDIR)/discovery.Po
 	-rm -f ./$(DEPDIR)/dns.Po

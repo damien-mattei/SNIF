@@ -42,6 +42,8 @@
 #include "snap.h"
 
 #include "discovery.h" /* CDP */
+
+#include "ciscol2.h"
 #include "stp.h"
 #include "ethernet.h"
 
@@ -99,7 +101,7 @@ void DecodeSNAP(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
      return;
    }
 
-   /* other Cisco protocols: CDP, and the names of VTP, DTP, UDLD */
+   /* other Cisco protocols: CDP, VTP, DTP, UDLD */
    if ((snap_hdr_ptr->orgcode[0] == CISCO_OUI0) && (snap_hdr_ptr->orgcode[1] == CISCO_OUI1)
        && (snap_hdr_ptr->orgcode[2] == CISCO_OUI2)) {
      switch (SNAP_ETHERTYPE(snap_hdr_ptr)) {
@@ -107,13 +109,13 @@ void DecodeSNAP(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
        DecodeCDP(pkt + dataoff, len - dataoff);
        return;
      case CISCO_PID_VTP:
-       printf("Cisco VTP (VLAN Trunking Protocol), not decoded\n");
+       DecodeVTP(pkt + dataoff, len - dataoff);
        return;
      case CISCO_PID_DTP:
-       printf("Cisco DTP (Dynamic Trunking Protocol), not decoded\n");
+       DecodeDTP(pkt + dataoff, len - dataoff);
        return;
      case CISCO_PID_UDLD:
-       printf("Cisco UDLD (UniDirectional Link Detection), not decoded\n");
+       DecodeUDLD(pkt + dataoff, len - dataoff);
        return;
      }
    }
