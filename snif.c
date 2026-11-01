@@ -2243,6 +2243,7 @@ int main(int argc, char **argv) {
     int ret;   /* return code */
     char *net; /* dot notation of the network address */
     char *mask;/* dot notation of the network mask    */
+    int permission_denied = 0; /* the capture needs privileges */
     bpf_u_int32 netp; /* ip          */
     bpf_u_int32 maskp;/* subnet mask */
     struct in_addr addr;
@@ -2627,9 +2628,13 @@ int main(int argc, char **argv) {
 
       if(ret == -1)
         {
+	  /* no IPv4 address (monitor interface, IPv6 only...): it can still
+	   * capture, only the filter "ip broadcast" needs the mask */
 	  fprintf(stderr,"%s\n",errbuf);
-	  CleanExit(1);
+	  netp = 0;
+	  maskp = PCAP_NETMASK_UNKNOWN;
         }
+      else {
 
       /* get the network address in a human readable form */
       addr.s_addr = netp;
@@ -2654,6 +2659,7 @@ int main(int argc, char **argv) {
         }
   
       printf("MASK: %s\n",mask);
+      }
 
   
 
@@ -2680,6 +2686,7 @@ int main(int argc, char **argv) {
 
 
       /* as pcap_open_live(), with the size of the kernel buffer (-B) */
+      permission_denied = 0;
       descr = pcap_create(dev, errbuf);
 
       if (descr != NULL) {
@@ -2696,12 +2703,21 @@ int main(int argc, char **argv) {
 	}
 	status = pcap_activate(descr);
 	if (status == PCAP_ERROR_RFMON_NOTSUP) {
-	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s cannot be put in monitor mode (-I)", dev);
+	  /* libpcap needs libnl-genl for that, the one of Ubuntu is built without */
+	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s cannot be put in monitor mode (-I) by libpcap", dev);
+	  fprintf(stderr, "A monitor interface can be created by hand, then captured without -I:\n"
+		  "  sudo iw phy phy0 interface add mon0 type monitor\n"
+		  "  sudo ip link set mon0 up\n"
+		  "  snif -i mon0\n"
+		  "  sudo iw dev mon0 del\n");
 	  pcap_close(descr);
 	  descr = NULL;
 	}
 	else if (status < 0) {
-	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s", pcap_geterr(descr));
+	  permission_denied = (status == PCAP_ERROR_PERM_DENIED)
+	    || (strstr(pcap_geterr(descr), "not permitted") != NULL);
+	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s",
+		   (pcap_geterr(descr)[0] != '\0') ? pcap_geterr(descr) : pcap_statustostr(status));
 	  pcap_close(descr);
 	  descr = NULL;
 	}
@@ -2716,8 +2732,8 @@ int main(int argc, char **argv) {
 
       if(descr == NULL)
         {
-          fprintf(stderr,"pcap_open_live(): %s\n",errbuf);
-          if (getuid() != 0) { /* most likely a permission problem */
+          fprintf(stderr,"Cannot capture on %s: %s\n",dev,errbuf);
+          if (permission_denied && (getuid() != 0)) {
             fprintf(stderr,"Live capture needs root privileges: run snif with sudo,\n"
                     "or give it the capture capabilities once after each build:\n"
                     "  sudo setcap cap_net_raw,cap_net_admin=eip ./snif\n");
