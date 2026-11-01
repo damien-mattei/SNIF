@@ -62,6 +62,8 @@
 
 #include "ptp.h"
 
+#include "cfm.h"
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -168,6 +170,12 @@ void DecodeOtherEtherType(u_int16_t type, u_int8_t * pkt, u_int32_t len, struct 
     return;
   case ETHERNET_TYPE_PTP:
     DecodePTP(pkt, len);
+    return;
+  case ETHERNET_TYPE_CFM:
+    DecodeCFM(pkt, len);
+    return;
+  case ETHERNET_TYPE_MACSEC:
+    DecodeMACsec(pkt, len, pkthdr);
     return;
   case ETHERNET_TYPE_HOMEPLUG_AV:
     DecodeHomePlugAV(pkt, len);
