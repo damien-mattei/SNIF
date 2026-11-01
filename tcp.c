@@ -65,6 +65,8 @@
 
 #include "ldp.h"
 
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -298,6 +300,124 @@ static void DecodeTCPOptions(u_int8_t * ptr, u_int32_t len)
 }
 
 
+/* a 32 bits number in network order at any alignment */
+static u_int32_t GetU32(const u_int8_t * p)
+{
+  return ((u_int32_t) p[0] << 24) | ((u_int32_t) p[1] << 16) | ((u_int32_t) p[2] << 8) | (u_int32_t) p[3];
+}
+
+
+/* the options of a segment as tcpdump: [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7] */
+static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n)
+{
+  u_int32_t pos = 0, olen, i;
+  int first = 1;
+
+  printf(", options [");
+
+  while (pos < n) {
+
+    printf("%s", first ? "" : ",");
+    first = 0;
+
+    if (o[pos] == TCPOPT_EOL) {
+      printf("eol");
+      break;
+    }
+    if (o[pos] == TCPOPT_NOP) {
+      printf("nop");
+      pos++;
+      continue;
+    }
+    if ((pos + 2 > n) || (o[pos + 1] < 2) || (pos + o[pos + 1] > n)) {
+      printf("bad opt");
+      break;
+    }
+    olen = o[pos + 1];
+
+    switch (o[pos]) {
+    case TCPOPT_MAXSEG:
+      if (olen == 4) {
+	printf("mss %u", (o[pos + 2] << 8) | o[pos + 3]);
+      }
+      break;
+    case TCPOPT_WSCALE:
+      if (olen == 3) {
+	printf("wscale %u", o[pos + 2]);
+      }
+      break;
+    case TCPOPT_SACKOK:
+      printf("sackOK");
+      break;
+    case TCPOPT_SACK:
+      printf("sack %u", (olen - 2) / 8);
+      for (i = pos + 2; i + 8 <= pos + olen; i += 8) {
+	printf(" {%u:%u}", GetU32(o + i), GetU32(o + i + 4));
+      }
+      break;
+    case TCPOPT_TIMESTAMP:
+      if (olen == 10) {
+	printf("TS val %u ecr %u", GetU32(o + pos + 2), GetU32(o + pos + 6));
+      }
+      break;
+    case TCPOPT_MPTCP:
+      printf("mptcp");
+      break;
+    case TCPOPT_TFO:
+      printf("tfo");
+      break;
+    default:
+      printf("unknown-%u", o[pos]);
+      break;
+    }
+    pos += olen;
+  }
+
+  printf("]");
+}
+
+
+/* the line of a segment with --tcpdump: Flags [S.], seq 1:518, ack 1,
+ * win 502, options [...], length 517 (sequence numbers absolute, as
+ * tcpdump -S: they would need to remember the connections) */
+static void PrintTcpdumpTCP(TCPHdr * tcptr, const u_int8_t * opt, u_int32_t optlen, u_int32_t dsize)
+{
+  static const struct { u_int8_t bit; char c; } flag_chars[] = {
+    { TH_FIN, 'F' }, { TH_SYN, 'S' }, { TH_RST, 'R' }, { TH_PUSH, 'P' },
+    { TH_URG, 'U' }, { TH_ECE, 'E' }, { TH_CWR, 'W' }, { TH_ACK, '.' }
+  };
+  u_int32_t seq = ntohl(tcptr->th_seq);
+  u_int8_t flags = tcptr->th_flags;
+  unsigned int i;
+
+  printf("Flags [");
+  for (i = 0; i < sizeof(flag_chars) / sizeof(flag_chars[0]); i++) {
+    if (flags & flag_chars[i].bit) {
+      printf("%c", flag_chars[i].c);
+    }
+  }
+  printf("%s]", flags ? "" : "none");
+
+  if (dsize > 0) {
+    printf(", seq %u:%u", seq, seq + dsize);
+  }
+  else if (flags & (TH_SYN | TH_FIN | TH_RST)) {
+    printf(", seq %u", seq);
+  }
+  if (flags & TH_ACK) {
+    printf(", ack %u", (u_int32_t) ntohl(tcptr->th_ack));
+  }
+  printf(", win %u", ntohs(tcptr->th_win));
+  if (flags & TH_URG) {
+    printf(", urg %u", ntohs(tcptr->th_urp));
+  }
+  if (optlen > 0) {
+    PrintTcpdumpOptions(opt, optlen);
+  }
+  printf(", length %u\n", dsize);
+}
+
+
 /*
  * Function: CheckTCPChecksum(u_int8_t *, const u_int32_t, IPHdr *, IP6RawHdr *)
  *
@@ -463,7 +583,9 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     SETCOLOR(TCP_COLOR);
   }
 
-  printf("TCP ");
+  if (!tcpdump_mode) {
+    printf("TCP ");
+  }
   
   if(len < TCP_HEADER_LEN)
     {
@@ -483,8 +605,10 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   sp = ntohs(tcptr->th_sport);
   dp = ntohs(tcptr->th_dport);
 
-  OneLineKeep(1); /* with -1: the flags, sequence and window too */
-  PrintPorts(sp,dp,TCP_COLOR);
+  if (!tcpdump_mode) { /* --tcpdump: the ports are after the addresses */
+    OneLineKeep(1); /* with -1: the flags, sequence and window too */
+    PrintPorts(sp,dp,TCP_COLOR);
+  }
 
   if(hlen < TCP_HEADER_LEN)
     {
@@ -501,6 +625,14 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
       
       return;
     }
+
+  if (tcpdump_mode) { /* one line as tcpdump, then the application */
+    PrintTcpdumpTCP(tcptr, pkt + TCP_HEADER_LEN, hlen - TCP_HEADER_LEN, len - hlen);
+    if (len > hlen) {
+      DecodeTCPPayload(sp, dp, pkt + hlen, len - hlen);
+    }
+    return;
+  }
 
   /* flags, sequence and acknowledgement numbers, window */
   PrintTCPFlags(tcptr->th_flags);

@@ -20,6 +20,15 @@ common options:
      10:57:03.123456  IP 192.168.1.30 > 192.168.1.1  UDP 41234 > 53 (domain)
        DNS query 0x1a2b  Question: apple.com A
 
+--tcpdump : one line by packet in the format of tcpdump, in colors:
+
+     11:15:16.018629 IP acer.36322 > www.gnu.org.https: Flags [S], seq 242255833, win 64800, options [mss 1440,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0
+     11:15:14.946033 IP acer.33753 > livebox.home.domain: 61632+ A? wikipedia.org. (31)
+
+     The names come without any traffic: the name of this machine,
+     /etc/hosts, and the DNS, mDNS and LLMNR answers seen in the capture
+     (tcpdump sends reverse DNS queries, that appear in its own capture)
+
 -t : no time stamps. The time stamps are to the microsecond; as in
      tcpdump, -tt shows the seconds since 1970, -ttt the time since the
      previous packet, -tttt the date and time ISO 8601, -ttttt the time

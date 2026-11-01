@@ -53,6 +53,8 @@
 
 
 
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -299,6 +301,12 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
 
     /* the addresses first: the main line of the layer */
+    if (tcpdump_mode) { /* with the ports, unless it is a fragment after the first */
+      PrintTcpdumpEndpoints(AF_INET, (u_int8_t *) &iptr->ip_src, (u_int8_t *) &iptr->ip_dst, iptr->ip_proto,
+			    ((hlen >= IP_HEADER_LEN_MINI) && (hlen + 4 <= len) && !(ntohs(iptr->ip_off) & 0x1fff))
+			    ? pkt + hlen : NULL, (hlen < len) ? len - hlen : 0);
+    }
+    else {
     printf("IP ");
      
     if (send_esc) {
@@ -329,6 +337,7 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 	printResolvedIP((char*)&(iptr->ip_dst));
       }
       printf("\n");
+    }
     }
 
     if (verb > 0) {

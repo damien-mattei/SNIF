@@ -52,6 +52,8 @@
 
 #include "ipv6.h"
 
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -341,6 +343,49 @@ static u_int32_t DecodeIP6Ext(u_int8_t type, u_int8_t * ptr, u_int32_t len, u_in
 }
 
 
+/* walk the extension headers without printing them, to find the upper
+ * layer of a packet (its ports for --tcpdump): its offset, 0 if it cannot
+ * be read (a fragment after the first, ESP, truncated) */
+static u_int32_t FindUpperLayer(const u_int8_t * pkt, u_int32_t end, u_int8_t * nxt)
+{
+  u_int32_t off = IP6_HDR_LEN, hlen;
+  int n;
+
+  *nxt = ((const IP6RawHdr *) pkt)->ip6nxt;
+
+  for (n = 0; n < IP6_MAX_EXT_HDRS; n++) {
+    switch (*nxt) {
+    case IP_PROTO_HOPOPTS:
+    case IP_PROTO_DSTOPTS:
+    case IP_PROTO_ROUTING:
+      if (off + 2 > end) {
+	return 0;
+      }
+      hlen = (pkt[off + 1] + 1) * 8;
+      break;
+    case IP_PROTO_FRAGMENT:
+      if ((off + 8 > end) || (((pkt[off + 2] << 8) | pkt[off + 3]) & 0xfff8)) {
+	return 0; /* not the first fragment */
+      }
+      hlen = 8;
+      break;
+    case IP_PROTO_AH:
+      if (off + 2 > end) {
+	return 0;
+      }
+      hlen = (pkt[off + 1] + 2) * 4;
+      break;
+    default:
+      return (off < end) ? off : 0;
+    }
+    *nxt = pkt[off];
+    off += hlen;
+  }
+
+  return 0;
+}
+
+
 /*
  * Function: DecodeIPV6(u_int8_t *, u_int32_t, struct pcap_pkthdr *)
  *
@@ -405,11 +450,21 @@ void DecodeIPV6(u_int8_t *pkt, u_int32_t len,struct pcap_pkthdr * pkthdr)
     }
   }
 
-  printf("IPv6 ");
-  PrintIP6Addr((u_int8_t *) &(hdr->ip6_src), IP_COLOR);
-  printf(" > ");
-  PrintIP6Addr((u_int8_t *) &(hdr->ip6_dst), IP_COLOR);
-  printf("\n");
+  if (tcpdump_mode) {
+    u_int32_t up;
+    u_int8_t upnxt;
+
+    up = FindUpperLayer(pkt, IP6_HDR_LEN + plen, &upnxt);
+    PrintTcpdumpEndpoints(AF_INET6, (u_int8_t *) &(hdr->ip6_src), (u_int8_t *) &(hdr->ip6_dst), upnxt,
+			  up ? pkt + up : NULL, up ? IP6_HDR_LEN + plen - up : 0);
+  }
+  else {
+    printf("IPv6 ");
+    PrintIP6Addr((u_int8_t *) &(hdr->ip6_src), IP_COLOR);
+    printf(" > ");
+    PrintIP6Addr((u_int8_t *) &(hdr->ip6_dst), IP_COLOR);
+    printf("\n");
+  }
 
   if (verb > 0) {
     flow = ntohl(hdr->ip6flow);

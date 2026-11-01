@@ -67,7 +67,9 @@ void DecodeGRE(u_int8_t *, u_int32_t,IPHdr *);/*  Decode Generic Routing Encapsu
 int get_device_info(void); /* Get the interface device list */
 void GetDeviceMAC(char * device); /* hardware address of the capture interface */
 void DumpHex(u_char *, u_int32_t); /* dump a packet in hexadecimal and ASCII */
-void PrintPorts(u_int16_t,u_int16_t,int); /* print source and destination ports */
+void PrintPorts(u_int16_t,u_int16_t,int);
+void PrintTcpdumpEndpoints(int, const u_int8_t *, const u_int8_t *, u_int8_t,
+			   const u_int8_t *, u_int32_t); /* IP src.port > dst.port: (--tcpdump) */ /* print source and destination ports */
 void printResolvedIP(char *); /* resolve IP in hostname and print it */
 void printResolvedIP6(struct in6_addr *); /* resolve IPv6 address in hostname and print it */
 void PrintIP6Addr(u_int8_t *, int); /* print an IPv6 address (and its name) */
@@ -107,6 +109,8 @@ void SigWinChHandler(int); /* handler for window size change */
  * fails (the blocks of 36 and 28 bits of the vendors) probes all the
  * table, it took most of the time of snif */
 #define HASH_SIZE(n) (2 * (n) + 1)
+
+#define OPT_TCPDUMP     256     /* --tcpdump, a long option only */
 
 #define SNAPLEN 262144 /* bytes captured per packet, as tcpdump (BUFSIZ cut the big ones) */
 

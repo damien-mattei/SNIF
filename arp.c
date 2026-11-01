@@ -52,9 +52,13 @@
 #include "ip.h"
 #include "snif.h" /* function names definitions */
 
+#include "names.h"
+
 #include "ethernet.h"
 
 #include "arp.h"
+
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
 
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
@@ -144,6 +148,21 @@ static void printARPIP(u_int8_t * ip)
 }
 
 
+/* print the name of an IPv4 address learned without traffic, or the
+ * address (--tcpdump) */
+static void PrintARPName(u_int8_t * ip)
+{
+  const char * name = NameCacheLookup(AF_INET, ip);
+
+  if (name != NULL) {
+    printf("%s", name);
+  }
+  else {
+    printARPIP(ip);
+  }
+}
+
+
 /* print the fields of the ARP header (verbose mode) */
 static void PrintARPHeader(EtherARP * arptr)
 {
@@ -204,6 +223,21 @@ void DecodeARP(u_int8_t * pkt, const u_int32_t len)
     printf("ARP #%d for protocol 0x%04X hardware #%d (hln %d, pln %d)\n",
 	   op, pro, hrd, arptr->ea_hdr.ar_hln, arptr->ea_hdr.ar_pln);
     PrintARPHeader(arptr);
+    return;
+  }
+
+  if (tcpdump_mode && ((op == ARPOP_REQUEST) || (op == ARPOP_REPLY))) { /* as tcpdump */
+    printf("ARP, %s ", (op == ARPOP_REQUEST) ? "Request who-has" : "Reply");
+    PrintARPName((op == ARPOP_REQUEST) ? arptr->arp_tpa : arptr->arp_spa);
+    if (op == ARPOP_REQUEST) {
+      printf(" tell ");
+      PrintARPName(arptr->arp_spa);
+    }
+    else {
+      printf(" is-at ");
+      printARPMAC(arptr->arp_sha);
+    }
+    printf(", length %u\n", len);
     return;
   }
 

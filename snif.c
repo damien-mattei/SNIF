@@ -57,6 +57,8 @@
 #include <netinet/if_ether.h> /* includes net/ethernet.h */
 #include <unistd.h> /* added for getopt() and optarg */
 
+#include <getopt.h> /* getopt_long, for --tcpdump */
+
 #include <search.h> /* added for hash tables */
 
 #include <signal.h> /* added for clean exit */
@@ -104,6 +106,8 @@
 
 #include "snif.h" /* function names definitions */
 
+#include "names.h" /* names of the hosts, for --tcpdump */
+
 
 
 /* older systems do not have multi hash table feature in glibc
@@ -137,6 +141,48 @@
  * only the name is printed, followed by the description in verbose mode
  */
 
+/* the short name of the service of a port ("https"), with its length in
+ * namelen and its description after it, or NULL */
+static const char * PortService(u_int16_t port, int * namelen, const char ** desc)
+{
+  char key[8]; /* "P" prefix + 5 digits + end of string */
+  char * value = NULL; /* "name<TAB>description" found in hash table */
+  char * tab;
+  ENTRY query,*result;
+
+#ifndef HAVE_HCREATE_R
+  sprintf(key,"P%d",port); /* only one hash table, port keys are prefixed */
+  query.key = key;
+  result = hsearch(query, FIND);
+  if (result) {
+    value = (char *) result->data;
+  }
+#else
+  sprintf(key,"%d",port);
+  query.key = key;
+  if (hsearch_r(query, FIND, &result,&htab_ports )) {
+    value = (char *) result->data;
+  }
+#endif
+
+  if (value == NULL) {
+    return NULL;
+  }
+
+  tab = strchr(value,'\t');
+  if (tab == NULL) { /* old data file: description only */
+    *namelen = strlen(value);
+    *desc = NULL;
+  }
+  else {
+    *namelen = tab - value; /* the name is before the tab */
+    *desc = tab + 1;
+  }
+
+  return value;
+}
+
+
 static void PrintPort(u_int16_t port,int color) {
 
   if (send_esc) {
@@ -152,39 +198,21 @@ static void PrintPort(u_int16_t port,int color) {
 
   if (((port < 1024) || (not_wkp)) && (text_port)) { /* print port text */
 
-    char key[8]; /* "P" prefix + 5 digits + end of string */
-    char * value = NULL; /* "name<TAB>description" found in hash table */
-    char * desc; /* description of the service */
-    ENTRY query,*result;
+    const char * value; /* "name<TAB>description" found in hash table */
+    const char * desc; /* description of the service */
+    int namelen;
 
-#ifndef HAVE_HCREATE_R
-    sprintf(key,"P%d",port); /* only one hash table, port keys are prefixed */
-    query.key = key;
-    result = hsearch(query, FIND);
-    if (result) {
-      value = (char *) result->data;
-    }
-#else
-    sprintf(key,"%d",port);
-    query.key = key;
-    if (hsearch_r(query, FIND, &result,&htab_ports )) {
-      value = (char *) result->data;
-    }
-#endif
+    value = PortService(port, &namelen, &desc);
 
     if (value == NULL) {
       printf(" (unknown)");
       return;
     }
 
-    desc = strchr(value,'\t');
-
     if (desc == NULL) { /* old data file: description only */
       printf(" (%s)",value);
     }
     else {
-      int namelen = desc - value; /* the name is before the tab */
-      desc++;
       printf(" (%.*s",namelen,value);
       /* in verbose mode add the description if it says more than the name */
       if ((verb > 0)
@@ -196,6 +224,79 @@ static void PrintPort(u_int16_t port,int color) {
 
   }
 
+}
+
+
+/* print one end of a packet in the format of tcpdump: the name of the
+ * address (learned without traffic) or the address, then the port
+ * (name of its service) in the color of the transport layer */
+static void PrintTcpdumpEnd(int family, const u_int8_t * addr, int has_port, u_int16_t port, int pcolor)
+{
+  char text[INET6_ADDRSTRLEN];
+  const char * name = NameCacheLookup(family, addr);
+  const char * service = NULL, * desc;
+  int namelen = 0;
+
+  if (send_esc) {
+    SETATTRIB( BRIGHT );
+  }
+  if (name != NULL) {
+    printf("%s", name);
+  }
+  else {
+    inet_ntop(family, addr, text, sizeof(text));
+    printf("%s", text);
+  }
+  if (send_esc) {
+    NORMALMODE();
+  }
+
+  if (has_port) {
+    if (send_esc) {
+      SETCOLORONLY(pcolor);
+    }
+    if (((port < 1024) || not_wkp) && text_port) {
+      service = PortService(port, &namelen, &desc);
+    }
+    if (service != NULL) {
+      printf(".%.*s", namelen, service);
+    }
+    else {
+      printf(".%u", port);
+    }
+  }
+
+  if (send_esc) {
+    SETCOLORONLY(IP_COLOR);
+  }
+}
+
+
+/*
+ * Function: PrintTcpdumpEndpoints(int, const u_int8_t *, const u_int8_t *,
+ *                                 u_int8_t, const u_int8_t *, u_int32_t)
+ *
+ * Purpose: the main line of IP with --tcpdump: "IP src.port > dst.port:",
+ *          the ports read in the TCP or UDP header that follows
+ *
+ * Arguments: family => AF_INET or AF_INET6
+ *            src, dst => the addresses
+ *            proto => the upper layer protocol
+ *            l4, l4len => its header, NULL if it cannot be read (fragment)
+ *
+ * Returns: void function
+ */
+void PrintTcpdumpEndpoints(int family, const u_int8_t * src, const u_int8_t * dst, u_int8_t proto,
+			   const u_int8_t * l4, u_int32_t l4len)
+{
+  int has_port = (l4 != NULL) && (l4len >= 4) && ((proto == IPPROTO_TCP) || (proto == IPPROTO_UDP));
+  int pcolor = (proto == IPPROTO_TCP) ? TCP_COLOR : UDP_COLOR;
+
+  printf("%s ", (family == AF_INET6) ? "IP6" : "IP");
+  PrintTcpdumpEnd(family, src, has_port, has_port ? ((l4[0] << 8) | l4[1]) : 0, pcolor);
+  printf(" > ");
+  PrintTcpdumpEnd(family, dst, has_port, has_port ? ((l4[2] << 8) | l4[3]) : 0, pcolor);
+  printf(":\n");
 }
 
 
@@ -274,11 +375,11 @@ void CleanExit(int exit_val)
   fprintf(stderr,"\nSnif exiting\n");
   
 
+  /* the tables of the ports and of the vendors are left to the end of
+   * the process: hdestroy() would free them but not their strings */
+
 #ifndef HAVE_HCREATE_R
 
-/* free memory of hash table */
-  hdestroy();
-  
   /* free DNS cache */
   if (resolv_ip) {
 
@@ -295,15 +396,6 @@ void CleanExit(int exit_val)
 
 #else
 
-  /* free memory of hash tables */
-  if (text_port) {
-    hdestroy_r(&htab_ports);
-  }
-
-  if (show_eth_vend) {
-    hdestroy_r(&htab_ethernet);
-  }
-  
   /* free DNS cache */
   if (resolv_ip) {
     hdestroy_r(&htab_dnscache);
@@ -993,14 +1085,14 @@ static ssize_t LayerWrite(void * cookie, const char * buf, size_t size)
 
     if (one_line && (layer_keep > 0)) { /* a line the decoder joins to it */
       layer_keep--;
-      fputs("  ", terminal);
+      fputs(tcpdump_mode ? " " : "  ", terminal);
       joined = 1;
       continue;
     }
 
     layer_detail = 1;
     if (one_line) {
-      fputs("  ", terminal);
+      fputs(tcpdump_mode ? " " : "  ", terminal);
     }
     else {
       fputc('\n', terminal);
@@ -1178,7 +1270,7 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
       if (send_esc) {
 	NORMALMODE();
       }
-      printf(one_line ? "  " : "\n");
+      printf(tcpdump_mode ? " " : one_line ? "  " : "\n");
     }
 
     if (send_esc) {
@@ -1283,7 +1375,12 @@ void ParseCmdLine(int argc, char *argv[])
   int only_8_colors = 0;          /* -8 */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1")) != EOF)
+  static const struct option long_options[] = {
+    { "tcpdump", no_argument, NULL, OPT_TCPDUMP },
+    { NULL, 0, NULL, 0 }
+  };
+
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1303,6 +1400,8 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -t : don't show time stamps; -tt: seconds since 1970, -ttt: since the previous\n");
 	printf("      packet, -tttt: date and time, -ttttt: since the first packet\n");
 	printf(" -1 : one line by packet: the main line of each layer, in its color\n");
+	printf(" --tcpdump : one line by packet in the format of tcpdump, in colors, with the\n");
+	printf("      names of the hosts learned without traffic (this machine, /etc/hosts, DNS seen)\n");
 	printf(" -s : disable the sending of escape sequences to terminal (no color!)\n");
 	printf(" -S : show a symbol before each layer (with or without colors)\n");
 	printf(" -n : print a new line beetween each dumped packet (usefull in monochrome mode)\n");
@@ -1355,6 +1454,12 @@ void ParseCmdLine(int argc, char *argv[])
 
       case '1':
 	one_line = 1;
+	break;
+
+      case OPT_TCPDUMP: /* one line as tcpdump, in colors */
+	tcpdump_mode = 1;
+	one_line = 1;
+	dump_link_layer = 0;
 	break;
 
       case 's':
@@ -1444,6 +1549,10 @@ void ParseCmdLine(int argc, char *argv[])
    * lines, left out, no need to search them */
   if (one_line) {
     show_eth_vend = 0;
+  }
+
+  if (tcpdump_mode) { /* the names known without any traffic */
+    NameCacheInit();
   }
 
   /* go through the color macros for the colors, the symbols or the

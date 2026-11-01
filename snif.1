@@ -10,6 +10,7 @@ snif \- Sniff Network Interface's Frames, a packet decoder with one color by lay
 .B snif
 [\fB\-hvpedtsSnlargKx81\fR]
 [\fB\-T rtp\fR]
+[\fB\-\-tcpdump\fR]
 [\fB\-i\fR \fIinterface\fR]
 [\fB\-f\fR \fIfile\fR]
 [\fB\-c\fR \fIcount\fR]
@@ -79,6 +80,23 @@ the other (with
 .BR \-S ,
 each one after its symbol); the details are left out. The TCP flags and
 the DNS questions and answers are kept on the line.
+.TP
+.B \-\-tcpdump
+One line by packet in the format of
+.BR tcpdump ,
+in colors: the address in the color of IP and the port in the color of
+TCP or UDP
+.RB ( "IP acer.51000 > 17.253.144.10.https: Flags [S.], ..." ),
+the TCP options, DNS and ARP as tcpdump shows them. The link layer is
+left out. The addresses get the names known without sending anything,
+unlike
+.BR tcpdump ,
+whose reverse DNS queries appear in its own capture: the name of this
+machine for its addresses,
+.IR /etc/hosts ,
+and the names learned from the DNS, mDNS and LLMNR answers seen in the
+capture. The TCP sequence numbers are absolute, as with
+.BR "tcpdump \-S" .
 .TP
 .B \-s
 No escape sequences: no colors.

@@ -54,6 +54,10 @@
 
 #include "dns.h"
 
+#include "names.h"
+
+
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
 
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
@@ -700,6 +704,25 @@ static void PrintEDNS(u_int16_t udp_size, u_int32_t ttl, const u_int8_t * opt, u
  * Returns: offset after the section, 0 if a record is malformed
  *          (a message saying so is printed)
  */
+/* learn the names of the addresses from the A, AAAA and PTR records,
+ * without any query (the names shown by --tcpdump) */
+static void LearnName(const u_int8_t * msg, u_int32_t len, u_int32_t off, u_int16_t type,
+		      u_int16_t rdlen, const char * name)
+{
+  char target[DNS_NAME_TEXT_LEN];
+
+  if ((type == DNS_RR_TYPE_A) && (rdlen == 4)) {
+    NameCacheAdd(AF_INET, msg + off, name);
+  }
+  else if ((type == DNS_RR_TYPE_AAAA) && (rdlen == 16)) {
+    NameCacheAdd(AF_INET6, msg + off, name);
+  }
+  else if ((type == DNS_RR_TYPE_PTR) && (GetDNSName(msg, len, off, target) != 0)) {
+    NameCacheAddReverse(name, target);
+  }
+}
+
+
 static u_int32_t DecodeDNSSection(const u_int8_t * msg, u_int32_t len, u_int32_t off,
 				  u_int16_t count, const char * section,
 				  int question, int proto)
@@ -755,6 +778,7 @@ static u_int32_t DecodeDNSSection(const u_int8_t * msg, u_int32_t len, u_int32_t
       PrintDNSType(type);
       PrintDNSClass((proto == DNS_PROTO_MDNS) ? (dns_class & ~MDNS_CLASS_FLAG) : dns_class);
       PrintDNSRData(msg, len, off, type, rdlen);
+      LearnName(msg, len, off, type, rdlen, name);
       if (verb > 0) {
 	printf("  TTL %u", ttl);
 	if ((proto == DNS_PROTO_MDNS) && (dns_class & MDNS_CLASS_FLAG)) {
@@ -769,6 +793,85 @@ static u_int32_t DecodeDNSSection(const u_int8_t * msg, u_int32_t len, u_int32_t
   }
 
   return off;
+}
+
+
+/* the line of a DNS message with --tcpdump: 3+ [1au] A? gnu.org. (36)
+ * for a query, 3* 1/0/1 A 209.51.188.116 (52) for a response */
+static void PrintTcpdumpDNS(const u_int8_t * msg, u_int32_t len, u_int16_t flags, u_int16_t qdcount,
+			    u_int16_t ancount, u_int16_t nscount, u_int16_t arcount)
+{
+  static const char * rcode_name[] = { "", "FormErr", "ServFail", "NXDomain", "NotImp", "Refused" };
+  char name[DNS_NAME_TEXT_LEN];
+  u_int32_t off = DNS_HDR_LEN;
+  u_int16_t i, type, rdlen, rcode = flags & DNS_HDR_FLAG_REPLY_CODE_MASK;
+
+  printf("%u", get_u16(msg));
+
+  if (!(flags & DNS_HDR_FLAG_RESPONSE)) { /* the questions */
+    printf("%s", (flags & DNS_HDR_FLAG_RECURSION_DESIRED) ? "+" : "");
+    if (arcount) {
+      printf(" [%uau]", arcount);
+    }
+    for (i = 0; (i < qdcount) && (i < 4); i++) {
+      off = GetDNSName(msg, len, off, name);
+      if ((off == 0) || (off + DNS_QUESTION_LEN > len)) {
+	printf(" [|domain]");
+	break;
+      }
+      printf(" ");
+      PrintDNSType(get_u16(msg + off));
+      printf("? %s.", name);
+      off += DNS_QUESTION_LEN;
+    }
+    printf(" (%u)\n", len);
+    return;
+  }
+
+  /* a response: flags, code, counts, then the answers */
+  printf("%s%s%s", (flags & DNS_HDR_FLAG_AUTHORITATIVE) ? "*" : "",
+	 (flags & DNS_HDR_FLAG_RECURSION_AVAIL) ? "" : "-", (flags & DNS_HDR_FLAG_TRUNCATED) ? "|" : "");
+  if (rcode != 0) {
+    if (rcode < sizeof(rcode_name) / sizeof(rcode_name[0])) {
+      printf(" %s", rcode_name[rcode]);
+    }
+    else {
+      printf(" Resp%u", rcode);
+    }
+  }
+  printf(" %u/%u/%u", ancount, nscount, arcount);
+
+  for (i = 0; i < qdcount; i++) { /* the questions are skipped */
+    off = GetDNSName(msg, len, off, name);
+    if ((off == 0) || (off + DNS_QUESTION_LEN > len)) {
+      printf(" [|domain] (%u)\n", len);
+      return;
+    }
+    off += DNS_QUESTION_LEN;
+  }
+
+  for (i = 0; (i < ancount) && (i < 8); i++) {
+    off = GetDNSName(msg, len, off, name);
+    if ((off == 0) || (off + DNS_RR_LEN > len)) {
+      printf(" [|domain]");
+      break;
+    }
+    type = get_u16(msg + off);
+    rdlen = get_u16(msg + off + 8);
+    off += DNS_RR_LEN;
+    if (off + rdlen > len) {
+      printf(" [|domain]");
+      break;
+    }
+    printf("%s ", (i > 0) ? "," : "");
+    PrintDNSType(type);
+    PrintDNSRData(msg, len, off, type, rdlen);
+    off += rdlen;
+  }
+  if (i < ancount) {
+    printf(", ...");
+  }
+  printf(" (%u)\n", len);
 }
 
 
@@ -795,7 +898,9 @@ void DecodeDNS(u_int8_t * pkt, u_int32_t len, int proto)
     SETCOLOR(DNS_COLOR);
   }
 
-  printf("%s ", dns_proto[proto]);
+  if (!tcpdump_mode) {
+    printf("%s ", dns_proto[proto]);
+  }
 
   if (len < DNS_HDR_LEN) {
     printf("truncated header (%u bytes)\n", len);
@@ -808,6 +913,22 @@ void DecodeDNS(u_int8_t * pkt, u_int32_t len, int proto)
   ancount = get_u16(pkt + 6);
   nscount = get_u16(pkt + 8);
   arcount = get_u16(pkt + 10);
+
+  if (tcpdump_mode) {
+    PrintTcpdumpDNS(pkt, len, flags, qdcount, ancount, nscount, arcount);
+    /* the sections still teach the names, their lines are left out */
+    off = DecodeDNSSection(pkt, len, DNS_HDR_LEN, qdcount, "Question", 1, proto);
+    if (off) {
+      off = DecodeDNSSection(pkt, len, off, ancount, "Answer", 0, proto);
+    }
+    if (off) {
+      off = DecodeDNSSection(pkt, len, off, nscount, "Authority", 0, proto);
+    }
+    if (off) {
+      DecodeDNSSection(pkt, len, off, arcount, "Additional", 0, proto);
+    }
+    return;
+  }
 
   opcode = (flags & DNS_HDR_FLAG_OPCODE_MASK) >> 11;
   rcode = flags & DNS_HDR_FLAG_REPLY_CODE_MASK;

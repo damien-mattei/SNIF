@@ -20,6 +20,7 @@ isis.c isis.h \
 flow.c flow.h \
 ldp.c ldp.h \
 rtp.c rtp.h \
+names.c names.h \
 sflow.c sflow.h \
 ptp.c ptp.h \
 cfm.c cfm.h \

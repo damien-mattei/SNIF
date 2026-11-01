@@ -84,6 +84,8 @@
 
 #include "ciscol2.h"
 
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
 		      */
@@ -205,9 +207,9 @@ static int IsQUICVersion(const u_int8_t * v)
  *            data => ptr to the UDP data
  *            dsize => length of the UDP data
  *
- * Returns: void function
+ * Returns: 1 if a decoder knows the data
  */
-static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int16_t dsize)
+static int DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int16_t dsize)
 {
     if (force_rtp && (dsize >= 2) && ((data[0] >> 6) == RTP_VERSION)) { /* -T rtp, as tcpdump */
       DecodeRTP(data, dsize);
@@ -349,6 +351,11 @@ static void DecodeUDPPayload(u_int16_t sp, u_int16_t dp, u_int8_t * data, u_int1
     else if ((sp >= 1024) && (dp >= 1024) && (IsRTCP(data, dsize) || LooksLikeRTP(data, dsize, sp, dp))) {
       DecodeRTP(data, dsize); /* no port of its own: recognized by its header */
     }
+    else {
+      return 0;
+    }
+
+    return 1;
 }
 
 
@@ -376,11 +383,13 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     u_int16_t dp;       /* dest port UDP */
     u_int16_t dsize;        /* packet payload size */
 
-    if (send_esc) {
+    if (send_esc && !tcpdump_mode) {
       SETCOLOR(UDP_COLOR);
     }
 
-    printf("UDP ");
+    if (!tcpdump_mode) { /* --tcpdump: the ports are after the addresses */
+      printf("UDP ");
+    }
     
     if(len < sizeof(UDPHdr))
     {
@@ -397,7 +406,9 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     sp = ntohs(udptr->uh_sport);
     dp = ntohs(udptr->uh_dport);
 
-    PrintPorts(sp,dp,UDP_COLOR);
+    if (!tcpdump_mode) {
+      PrintPorts(sp,dp,UDP_COLOR);
+    }
    
     uhlen = ntohs(udptr->uh_len);
         
@@ -419,6 +430,16 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
 
     /* length was validated up above */
     dsize = uhlen - UDP_HEADER_LEN; 
+
+    if (tcpdump_mode) { /* the application, or UDP and its length as tcpdump */
+      if ((dsize == 0) || !DecodeUDPPayload(sp, dp, pkt + UDP_HEADER_LEN, dsize)) {
+	if (send_esc) {
+	  SETCOLOR(UDP_COLOR);
+	}
+	printf("UDP, length %u\n", dsize);
+      }
+      return;
+    }
 
     if ((dsize > 0) || (verb > 0)) {
       printf("Payload: %d bytes\n", dsize);

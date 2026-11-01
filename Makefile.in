@@ -112,9 +112,9 @@ am_snif_OBJECTS = snif.$(OBJEXT) ethernet.$(OBJEXT) \
 	tokenring.$(OBJEXT) fddi.$(OBJEXT) llc.$(OBJEXT) \
 	snap.$(OBJEXT) enc.$(OBJEXT) ppp.$(OBJEXT) pppctl.$(OBJEXT) \
 	isis.$(OBJEXT) flow.$(OBJEXT) ldp.$(OBJEXT) rtp.$(OBJEXT) \
-	sflow.$(OBJEXT) ptp.$(OBJEXT) cfm.$(OBJEXT) ciscol2.$(OBJEXT) \
-	pppserial.$(OBJEXT) slip.$(OBJEXT) wifi.$(OBJEXT) \
-	chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
+	names.$(OBJEXT) sflow.$(OBJEXT) ptp.$(OBJEXT) cfm.$(OBJEXT) \
+	ciscol2.$(OBJEXT) pppserial.$(OBJEXT) slip.$(OBJEXT) \
+	wifi.$(OBJEXT) chdlc.$(OBJEXT) sll.$(OBJEXT) pflog.$(OBJEXT) \
 	oldpflog.$(OBJEXT) eap.$(OBJEXT) pppoe.$(OBJEXT) \
 	loopback.$(OBJEXT) raw.$(OBJEXT) i4lrawip.$(OBJEXT) \
 	i4lciscoip.$(OBJEXT) vlan.$(OBJEXT) arp.$(OBJEXT) ip.$(OBJEXT) \
@@ -155,18 +155,19 @@ am__depfiles_remade = ./$(DEPDIR)/arp.Po ./$(DEPDIR)/cfm.Po \
 	./$(DEPDIR)/iproto.Po ./$(DEPDIR)/ipv6.Po ./$(DEPDIR)/ipx.Po \
 	./$(DEPDIR)/isis.Po ./$(DEPDIR)/ldp.Po ./$(DEPDIR)/llc.Po \
 	./$(DEPDIR)/loopback.Po ./$(DEPDIR)/misc.Po \
-	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/ntp.Po ./$(DEPDIR)/oldpflog.Po \
-	./$(DEPDIR)/pflog.Po ./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po \
-	./$(DEPDIR)/pppoe.Po ./$(DEPDIR)/pppserial.Po \
-	./$(DEPDIR)/ptp.Po ./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po \
-	./$(DEPDIR)/routing.Po ./$(DEPDIR)/rtp.Po \
-	./$(DEPDIR)/services.Po ./$(DEPDIR)/sflow.Po \
-	./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po ./$(DEPDIR)/slow.Po \
-	./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po ./$(DEPDIR)/ssdp.Po \
-	./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po ./$(DEPDIR)/text.Po \
-	./$(DEPDIR)/tls.Po ./$(DEPDIR)/tokenring.Po \
-	./$(DEPDIR)/tunnel.Po ./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po \
-	./$(DEPDIR)/vpn.Po ./$(DEPDIR)/wifi.Po
+	./$(DEPDIR)/mpls.Po ./$(DEPDIR)/names.Po ./$(DEPDIR)/ntp.Po \
+	./$(DEPDIR)/oldpflog.Po ./$(DEPDIR)/pflog.Po \
+	./$(DEPDIR)/ppp.Po ./$(DEPDIR)/pppctl.Po ./$(DEPDIR)/pppoe.Po \
+	./$(DEPDIR)/pppserial.Po ./$(DEPDIR)/ptp.Po \
+	./$(DEPDIR)/quic.Po ./$(DEPDIR)/raw.Po ./$(DEPDIR)/routing.Po \
+	./$(DEPDIR)/rtp.Po ./$(DEPDIR)/services.Po \
+	./$(DEPDIR)/sflow.Po ./$(DEPDIR)/slip.Po ./$(DEPDIR)/sll.Po \
+	./$(DEPDIR)/slow.Po ./$(DEPDIR)/snap.Po ./$(DEPDIR)/snif.Po \
+	./$(DEPDIR)/ssdp.Po ./$(DEPDIR)/stp.Po ./$(DEPDIR)/tcp.Po \
+	./$(DEPDIR)/text.Po ./$(DEPDIR)/tls.Po \
+	./$(DEPDIR)/tokenring.Po ./$(DEPDIR)/tunnel.Po \
+	./$(DEPDIR)/udp.Po ./$(DEPDIR)/vlan.Po ./$(DEPDIR)/vpn.Po \
+	./$(DEPDIR)/wifi.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -371,6 +372,7 @@ isis.c isis.h \
 flow.c flow.h \
 ldp.c ldp.h \
 rtp.c rtp.h \
+names.c names.h \
 sflow.c sflow.h \
 ptp.c ptp.h \
 cfm.c cfm.h \
@@ -574,6 +576,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/loopback.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/misc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mpls.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/names.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ntp.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/oldpflog.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pflog.Po@am__quote@ # am--include-marker
@@ -992,6 +995,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/loopback.Po
 	-rm -f ./$(DEPDIR)/misc.Po
 	-rm -f ./$(DEPDIR)/mpls.Po
+	-rm -f ./$(DEPDIR)/names.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
@@ -1099,6 +1103,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/loopback.Po
 	-rm -f ./$(DEPDIR)/misc.Po
 	-rm -f ./$(DEPDIR)/mpls.Po
+	-rm -f ./$(DEPDIR)/names.Po
 	-rm -f ./$(DEPDIR)/ntp.Po
 	-rm -f ./$(DEPDIR)/oldpflog.Po
 	-rm -f ./$(DEPDIR)/pflog.Po
