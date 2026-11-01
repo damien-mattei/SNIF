@@ -14,6 +14,17 @@ common options:
 
 -x : dump the packets in hexadecimal and ASCII
 
+-1 : one line by packet, the main line of each layer in its color (and
+     its symbol with -S), as compact as tcpdump:
+
+     10:57:03.123456  IP 192.168.1.30 > 192.168.1.1  UDP 41234 > 53 (domain)
+       DNS query 0x1a2b  Question: apple.com A
+
+-t : no time stamps. The time stamps are to the microsecond; as in
+     tcpdump, -tt shows the seconds since 1970, -ttt the time since the
+     previous packet, -tttt the date and time ISO 8601, -ttttt the time
+     since the first packet
+
 -8 : use only the 8 basic colors. By default, when the terminal says it
      knows the palette of 256 colors (TERM=xterm-256color, or COLORTERM
      set, as in xfce4-terminal, gnome-terminal, konsole), softer colors

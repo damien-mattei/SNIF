@@ -839,6 +839,9 @@ void DecodeDNS(u_int8_t * pkt, u_int32_t len, int proto)
     printf("  truncated (TC)");
   }
 
+  /* with -1: the questions and the answers too */
+  OneLineKeep(((verb > 0) ? 1 : 0) + qdcount + ancount);
+
   printf("\n");
 
   if (verb > 0) {

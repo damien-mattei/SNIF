@@ -830,6 +830,8 @@ static int symbol_color = -1; /* color of the layer being shown, -1 out
 
 static int layer_detail = 0; /* the first line of the layer is ended */
 
+static int layer_keep = 0; /* lines of the layer joined to its first line (-1) */
+
 static FILE * terminal = NULL; /* the real standard output, under the
 				* stream that shades the layers */
 
@@ -857,6 +859,7 @@ void LayerSymbol(int color)
     if (layer_symbol[i].color == color) {
       symbol_color = color; /* a new layer, its first line */
       layer_detail = 0;
+      layer_keep = 0;
       if (show_symbols) {
 	if (use_colors) { /* in the color of its layer, not bright */
 	  NORMALMODE();
@@ -866,6 +869,25 @@ void LayerSymbol(int color)
       }
       return;
     }
+  }
+}
+
+
+/*
+ * Function: OneLineKeep(int)
+ *
+ * Purpose: with one line by packet (-1), join the next lines of the
+ *          layer to its first line: the decoders call it when the main
+ *          information is on the lines after the first one
+ *
+ * Arguments: n => number of lines
+ *
+ * Returns: void function
+ */
+void OneLineKeep(int n)
+{
+  if (one_line) {
+    layer_keep = n;
   }
 }
 
@@ -898,34 +920,68 @@ void SetColor(int color)
 
 #ifdef HAVE_FOPENCOOKIE
 /*
- * Function: ShadeWrite(void *, const char *, size_t)
+ * Function: LayerWrite(void *, const char *, size_t)
  *
  * Purpose: write the output of snif to the terminal: at the end of the
- *          first line of a layer, go on in the shade of its details
+ *          first line of a layer, go on in the shade of its details (256
+ *          colors), or, with one line by packet (-1), join the first
+ *          lines of the layers and drop the details
  *
  * Arguments: cookie => unused
  *            buf, size => the text written
  *
  * Returns: the size written
  */
-static ssize_t ShadeWrite(void * cookie, const char * buf, size_t size)
+static ssize_t LayerWrite(void * cookie, const char * buf, size_t size)
 {
+  static int joined = 0; /* at the start of a line joined to the first one */
   size_t start = 0, i;
 
   (void) cookie;
 
   for (i = 0; i < size; i++) {
-    if (buf[i] == '\n') {
-      fwrite(buf + start, 1, i + 1 - start, terminal);
+
+    if (one_line && (symbol_color != -1) && layer_detail) { /* a detail: dropped */
       start = i + 1;
-      if ((symbol_color != -1) && !layer_detail) {
-	layer_detail = 1;
+      continue;
+    }
+
+    if (joined && (buf[i] == ' ')) { /* the indentation of a joined line */
+      start = i + 1;
+      continue;
+    }
+    joined = 0;
+
+    if ((buf[i] != '\n') || (symbol_color == -1) || layer_detail) {
+      continue;
+    }
+
+    /* the end of the first line of the layer */
+    fwrite(buf + start, 1, i - start, terminal);
+    start = i + 1;
+
+    if (one_line && (layer_keep > 0)) { /* a line the decoder joins to it */
+      layer_keep--;
+      fputs("  ", terminal);
+      joined = 1;
+      continue;
+    }
+
+    layer_detail = 1;
+    if (one_line) {
+      fputs("  ", terminal);
+    }
+    else {
+      fputc('\n', terminal);
+      if (use_colors && colors256) {
 	fprintf(terminal, "%c[38;5;%dm", 0x1B, COLOR_DETAIL(symbol_color));
       }
     }
   }
 
-  fwrite(buf + start, 1, size - start, terminal);
+  if (start < size) {
+    fwrite(buf + start, 1, size - start, terminal);
+  }
 
   return size;
 }
@@ -933,30 +989,103 @@ static ssize_t ShadeWrite(void * cookie, const char * buf, size_t size)
 
 
 /*
- * Function: ShadeLayers(void)
+ * Function: FilterLayers(void)
  *
- * Purpose: put the stream that shades the layers over the standard
+ * Purpose: put the stream that follows the layers over the standard
  *          output, unbuffered to follow the lines as they are written
  *
- * Returns: void function
+ * Returns: 1 if it is in place
  */
-static void ShadeLayers(void)
+static int FilterLayers(void)
 {
 #ifdef HAVE_FOPENCOOKIE
-  cookie_io_functions_t shade = { NULL, ShadeWrite, NULL, NULL };
+  cookie_io_functions_t layers = { NULL, LayerWrite, NULL, NULL };
   FILE * stream;
 
   fflush(stdout);
 
-  stream = fopencookie(NULL, "w", shade);
+  stream = fopencookie(NULL, "w", layers);
   if (stream == NULL) {
-    return; /* one shade by layer */
+    return 0;
   }
 
   setvbuf(stream, NULL, _IONBF, 0);
   terminal = stdout;
   stdout = stream;
+  return 1;
+#else
+  return 0;
 #endif
+}
+
+
+/*
+ * Function: PrintTime(const struct timeval *)
+ *
+ * Purpose: print the time of a packet, to the microsecond, in the format
+ *          chosen by the number of -t as in tcpdump: date and time (time
+ *          only with -1), seconds since 1970 (-tt), since the previous
+ *          packet (-ttt), date and time ISO 8601 (-tttt), since the
+ *          first packet (-ttttt)
+ *
+ * Arguments: tv => the time stamp of the packet
+ *
+ * Returns: void function
+ */
+static void PrintTime(const struct timeval * tv)
+{
+  static struct timeval first, previous;
+  static int started = 0;
+  long long delta;
+  time_t t = tv->tv_sec;
+  struct tm tm;
+  char text[64];
+
+  if (!started) {
+    first = previous = *tv;
+    started = 1;
+  }
+
+  switch (ts_format) {
+
+  case TS_EPOCH:
+    printf("%ld.%06ld", (long) tv->tv_sec, (long) tv->tv_usec);
+    break;
+
+  case TS_DELTA:
+  case TS_SINCE_FIRST:
+    delta = ((long long) tv->tv_sec - ((ts_format == TS_DELTA) ? previous.tv_sec : first.tv_sec)) * 1000000
+      + (tv->tv_usec - ((ts_format == TS_DELTA) ? previous.tv_usec : first.tv_usec));
+    if (delta < 0) { /* packets out of order */
+      printf("-");
+      delta = -delta;
+    }
+    printf("%02lld:%02lld:%02lld.%06lld", delta / 3600000000LL, (delta / 60000000LL) % 60,
+	   (delta / 1000000LL) % 60, delta % 1000000LL);
+    break;
+
+  case TS_ISO:
+    localtime_r(&t, &tm);
+    strftime(text, sizeof(text), "%Y-%m-%d %H:%M:%S", &tm);
+    printf("%s.%06ld", text, (long) tv->tv_usec);
+    break;
+
+  default: /* the time of day */
+    localtime_r(&t, &tm);
+    if (one_line) {
+      strftime(text, sizeof(text), "%H:%M:%S", &tm);
+      printf("%s.%06ld", text, (long) tv->tv_usec);
+    }
+    else {
+      strftime(text, sizeof(text), "%a %b %e %H:%M:%S", &tm);
+      printf("%s.%06ld", text, (long) tv->tv_usec);
+      strftime(text, sizeof(text), " %Y", &tm);
+      printf("%s", text);
+    }
+    break;
+  }
+
+  previous = *tv;
 }
 
 
@@ -1006,24 +1135,26 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
       NORMALMODE();
     }
 
-    if (show_ts) {  
+    if (ts_format != TS_NONE) {
       /* time info about reception of packet */
-      printf("Packet received at ..... ");
+      if (!one_line) {
+	printf("Packet received at ..... ");
+      }
       if (send_esc) { /* the date in soft white, to find the packets */
 	SETCOLORONLY(COLOR256(254, WHITE));
       }
-      printf("%.24s", ctime((const time_t*)&((pkthdr->ts).tv_sec))); /* without its new line */
+      PrintTime(&pkthdr->ts);
       if (send_esc) {
 	NORMALMODE();
       }
-      printf("\n");
+      printf(one_line ? "  " : "\n");
     }
 
     if (send_esc) {
       SETCOLORONLY(DATA_LINK_LAYER_COLOR); /* the symbol goes to the link layer */
     }
 
-    if (verb > 0) {
+    if ((verb > 0) && !one_line) {
       printf("Grabbed packet of length %d\n",pkthdr->len); /* total packet length */
     
     cap_len = pkthdr->caplen; /* captured packet length */
@@ -1049,12 +1180,21 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     symbol_color = -1; /* out of the layers */
 
+    if (one_line) { /* the end of the line of the packet */
+      if (send_esc) {
+	NORMALMODE();
+      }
+      printf("\n");
+    }
+
     if (dump_hex) {
       DumpHex(pkt, pkthdr->caplen);
     }
-    
-    
-    if (send_esc) {
+
+    if (one_line) {
+      fflush(stdout);
+    }
+    else if (send_esc) {
       NORMALMODE();
       /* SETATTCOL(REVERSE,YELLOW); */
       SETCOLOR(YELLOW);
@@ -1110,7 +1250,7 @@ void ParseCmdLine(int argc, char *argv[])
   int only_8_colors = 0;          /* -8 */
 
   /* loop through each command line var and process it */
-  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:")) != EOF)
+  while((ch = getopt(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1")) != EOF)
     {
       switch(ch) {
 
@@ -1127,7 +1267,9 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -p : don't put the interface into promiscuous mode\n");
 	printf(" -e : don't show ethernet vendor codes\n");
 	printf(" -d : don't dump link layer info (ethernet address,...)\n");
-	printf(" -t : don't show time stamps\n");
+	printf(" -t : don't show time stamps; -tt: seconds since 1970, -ttt: since the previous\n");
+	printf("      packet, -tttt: date and time, -ttttt: since the first packet\n");
+	printf(" -1 : one line by packet: the main line of each layer, in its color\n");
 	printf(" -s : disable the sending of escape sequences to terminal (no color!)\n");
 	printf(" -S : show a symbol before each layer (with or without colors)\n");
 	printf(" -n : print a new line beetween each dumped packet (usefull in monochrome mode)\n");
@@ -1172,8 +1314,14 @@ void ParseCmdLine(int argc, char *argv[])
 	dump_link_layer = 0;
 	break;
 
-      case 't':
-	show_ts = 0;
+      case 't': /* as in tcpdump: -t none, -tt, -ttt, -tttt, -ttttt */
+	if (ts_format < TS_SINCE_FIRST) {
+	  ts_format++;
+	}
+	break;
+
+      case '1':
+	one_line = 1;
 	break;
 
       case 's':
@@ -1259,12 +1407,17 @@ void ParseCmdLine(int argc, char *argv[])
     colors256 = Terminal256Colors();
   }
 
-  /* go through the color macros for the colors or for the symbols */
-  send_esc = use_colors || show_symbols;
+  /* go through the color macros for the colors, the symbols or the
+   * layers of the one line output */
+  send_esc = use_colors || show_symbols || one_line;
 
   /* two shades by layer need the 256 colors */
-  if (use_colors && colors256) {
-    ShadeLayers();
+  if ((use_colors && colors256) || one_line) {
+    if (!FilterLayers() && one_line) {
+      fprintf(stderr, "One line by packet (-1) is not available on this system.\n");
+      one_line = 0;
+      send_esc = use_colors || show_symbols;
+    }
   }
 
   if (show_symbols) {

@@ -95,6 +95,14 @@ void SigWinChHandler(int); /* handler for window size change */
 #define PKGDATADIR "/usr/local/share/snif"
 #endif
 
+/* formats of the time stamps, by the number of -t as in tcpdump */
+#define TS_DEFAULT      0       /* date and time to the microsecond */
+#define TS_NONE         1       /* -t */
+#define TS_EPOCH        2       /* -tt: seconds since 1970 */
+#define TS_DELTA        3       /* -ttt: since the previous packet */
+#define TS_ISO          4       /* -tttt: date and time ISO 8601 */
+#define TS_SINCE_FIRST  5       /* -ttttt: since the first packet */
+
 #define SNAPLEN 262144 /* bytes captured per packet, as tcpdump (BUFSIZ cut the big ones) */
 
 

@@ -8,7 +8,7 @@
 snif \- Sniff Network Interface's Frames, a packet decoder with one color by layer
 .SH SYNOPSIS
 .B snif
-[\fB\-hvpedtsSnlargKx8\fR]
+[\fB\-hvpedtsSnlargKx81\fR]
 [\fB\-T rtp\fR]
 [\fB\-i\fR \fIinterface\fR]
 [\fB\-f\fR \fIfile\fR]
@@ -59,7 +59,26 @@ Do not show the vendor of the Ethernet cards.
 Do not show the link layer (Ethernet addresses...).
 .TP
 .B \-t
-Do not show the time stamps.
+Do not show the time stamps. By default, the date and time of each packet
+are shown to the microsecond (the time only with
+.BR \-1 ).
+As in
+.BR tcpdump ,
+.B \-tt
+shows the seconds since 1970,
+.B \-ttt
+the time since the previous packet,
+.B \-tttt
+the date and time as 2026\-11\-01 10:57:03.123456, and
+.B \-ttttt
+the time since the first packet.
+.TP
+.B \-1
+One line by packet: the main line of each layer, in its color, one after
+the other (with
+.BR \-S ,
+each one after its symbol); the details are left out. The TCP flags and
+the DNS questions and answers are kept on the line.
 .TP
 .B \-s
 No escape sequences: no colors.

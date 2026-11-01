@@ -54,7 +54,9 @@ int show_eth_vend = 1; /* show ethernet vendor codes */
 
 int dump_link_layer = 1; /* dump network link layer info (ethernet address ,...) */
 
-int show_ts = 1; /* show time stamp info */
+int ts_format = TS_DEFAULT; /* format of the time stamps: number of -t */
+
+int one_line = 0; /* one line by packet (-1) */
 
 int send_esc = 1; /* send escape sequence to terminal
 		   * enable color and bold text

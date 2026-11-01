@@ -483,6 +483,7 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   sp = ntohs(tcptr->th_sport);
   dp = ntohs(tcptr->th_dport);
 
+  OneLineKeep(1); /* with -1: the flags, sequence and window too */
   PrintPorts(sp,dp,TCP_COLOR);
 
   if(hlen < TCP_HEADER_LEN)
