@@ -14,6 +14,10 @@ snif \- Sniff Network Interface's Frames, a packet decoder with one color by lay
 [\fB\-i\fR \fIinterface\fR]
 [\fB\-f\fR \fIfile\fR]
 [\fB\-c\fR \fIcount\fR]
+[\fB\-w\fR \fIfile\fR]
+[\fB\-Q\fR \fIin\fR|\fIout\fR|\fIinout\fR]
+[\fB\-B\fR \fIsize\fR]
+[\fB\-D#\fR]
 [\fIfilter expression\fR]
 .SH DESCRIPTION
 .B snif
@@ -46,6 +50,42 @@ Read the packets from a pcap file instead of an interface.
 Exit after
 .I count
 packets.
+.TP
+.BI \-w " file"
+Write the packets to a pcap file, as
+.BR "tcpdump \-w" ,
+to read them later with
+.B \-f
+or Wireshark; they are not shown, unless
+.B \-\-print
+is given too. With
+.B \-f
+and a filter, it extracts packets from a file.
+.TP
+.B \-\-print
+With
+.BR \-w ,
+show the packets too.
+.TP
+.B \-D
+List the interfaces snif can capture on, and exit.
+.TP
+.BI \-Q " in" | out | inout
+Capture only the packets received, sent, or both.
+.TP
+.BI \-B " size"
+Size of the kernel buffer, in KiB, where the packets wait to be read.
+.TP
+.BR \-# ", " \-\-number
+Show the number of each packet.
+.TP
+.B \-\-absolute
+Show the absolute TCP sequence and acknowledgement numbers. By default,
+as in
+.BR tcpdump ,
+they are relative to the first ones seen in each direction of the
+connection (1, 518...), the first segment keeping its absolute numbers;
+in verbose mode the absolute numbers are added in parentheses.
 .TP
 .B \-v
 Verbose mode: all the fields of the headers, the options, the flags.
@@ -95,8 +135,7 @@ whose reverse DNS queries appear in its own capture: the name of this
 machine for its addresses,
 .IR /etc/hosts ,
 and the names learned from the DNS, mDNS and LLMNR answers seen in the
-capture. The TCP sequence numbers are absolute, as with
-.BR "tcpdump \-S" .
+capture.
 .TP
 .B \-s
 No escape sequences: no colors.

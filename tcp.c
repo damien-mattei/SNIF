@@ -33,6 +33,10 @@
 
 #include <pcap.h>
 
+#include <string.h> /* memcmp, for the connections */
+
+#include <sys/socket.h> /* AF_INET6 */
+
 #include <netinet/in.h>
 
 #include <search.h> /* added for hash tables */
@@ -66,6 +70,8 @@
 #include "ldp.h"
 
 extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
+extern int absolute_seq; /* absolute TCP sequence numbers (--absolute) */
 
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
@@ -300,6 +306,140 @@ static void DecodeTCPOptions(u_int8_t * ptr, u_int32_t len)
 }
 
 
+/* a connection, for the relative sequence numbers: its two ends in a
+ * fixed order, and the first sequence number seen in each direction */
+typedef struct {
+  u_int8_t used;
+  u_int8_t family;
+  u_int8_t addr[2][16];
+  u_int16_t port[2];
+  u_int32_t base[2];
+  u_int8_t known[2];
+} TCPConnection;
+
+static TCPConnection tcp_connections[TCP_CONN_SIZE];
+
+
+/* the numbers of a segment, relative to the first ones of its
+ * connection in each direction (as tcpdump without -S) */
+typedef struct {
+  u_int32_t seq, ack;
+  int seq_relative, ack_relative;
+  u_int32_t sack_base; /* subtracted from the SACK blocks */
+} TCPNumbers;
+
+
+/*
+ * Function: RelativeNumbers(TCPHdr *, IPHdr *, IP6RawHdr *, TCPNumbers *)
+ *
+ * Purpose: give the sequence and acknowledgement numbers relative to the
+ *          start of the connection: the first segment seen in a
+ *          direction keeps its absolute numbers and sets the base (a SYN
+ *          starts a new connection on the same ports)
+ *
+ * Arguments: tcptr => the TCP header
+ *            iptr, ip6ptr => the IP header (one of them)
+ *            n => receives the numbers
+ *
+ * Returns: void function
+ */
+static void RelativeNumbers(TCPHdr * tcptr, IPHdr * iptr, IP6RawHdr * ip6ptr, TCPNumbers * n)
+{
+  const u_int8_t * src, * dst;
+  u_int16_t sp = ntohs(tcptr->th_sport), dp = ntohs(tcptr->th_dport);
+  u_int32_t h = 2166136261u, i, alen;
+  int family, dir, cmp, lo;
+  TCPConnection * c = NULL;
+  u_int8_t flags = tcptr->th_flags;
+
+  n->seq = ntohl(tcptr->th_seq);
+  n->ack = ntohl(tcptr->th_ack);
+  n->seq_relative = n->ack_relative = 0;
+  n->sack_base = 0;
+
+  if (absolute_seq) {
+    return;
+  }
+
+  if (ip6ptr != NULL) {
+    family = AF_INET6;
+    alen = 16;
+    src = (const u_int8_t *) &ip6ptr->ip6_src;
+    dst = (const u_int8_t *) &ip6ptr->ip6_dst;
+  }
+  else if (iptr != NULL) {
+    family = AF_INET;
+    alen = 4;
+    src = (const u_int8_t *) &iptr->ip_src;
+    dst = (const u_int8_t *) &iptr->ip_dst;
+  }
+  else {
+    return;
+  }
+
+  /* the ends in a fixed order: the lower address (and port) first */
+  cmp = memcmp(src, dst, alen);
+  dir = ((cmp < 0) || ((cmp == 0) && (sp <= dp))) ? 0 : 1;
+
+  for (i = 0; i < alen; i++) {
+    h = (h ^ (src[i] ^ dst[i])) * 16777619u;
+  }
+  h = (h ^ (u_int32_t) (sp ^ dp)) * 16777619u;
+
+  for (i = 0; i < TCP_CONN_PROBES; i++) {
+    TCPConnection * e = &tcp_connections[(h + i) & (TCP_CONN_SIZE - 1)];
+    lo = dir; /* index of the source in the entry */
+    if (e->used && (e->family == family)
+	&& (memcmp(e->addr[lo], src, alen) == 0) && (memcmp(e->addr[!lo], dst, alen) == 0)
+	&& (e->port[lo] == sp) && (e->port[!lo] == dp)) {
+      c = e;
+      break;
+    }
+    if (!e->used && (c == NULL)) {
+      c = e;
+    }
+  }
+
+  if ((c == NULL) || !c->used || (c->port[dir] != sp) || (c->port[!dir] != dp)
+      || (memcmp(c->addr[dir], src, alen) != 0) || (memcmp(c->addr[!dir], dst, alen) != 0)) {
+    if (c == NULL) { /* the slots are taken: the first one is replaced */
+      c = &tcp_connections[h & (TCP_CONN_SIZE - 1)];
+    }
+    memset(c, 0, sizeof(*c));
+    c->used = 1;
+    c->family = family;
+    memcpy(c->addr[dir], src, alen);
+    memcpy(c->addr[!dir], dst, alen);
+    c->port[dir] = sp;
+    c->port[!dir] = dp;
+  }
+
+  if (flags & TH_SYN) { /* the start of a connection, maybe on old ports */
+    if (!(flags & TH_ACK)) {
+      c->known[0] = c->known[1] = 0;
+    }
+    else {
+      c->known[dir] = 0;
+    }
+  }
+
+  if (!c->known[dir]) { /* the first segment in this direction: absolute */
+    c->base[dir] = n->seq;
+    c->known[dir] = 1;
+    return;
+  }
+
+  n->seq -= c->base[dir];
+  n->seq_relative = 1;
+
+  if (c->known[!dir]) { /* the acknowledged bytes come from the other end */
+    n->ack -= c->base[!dir];
+    n->ack_relative = 1;
+    n->sack_base = c->base[!dir];
+  }
+}
+
+
 /* a 32 bits number in network order at any alignment */
 static u_int32_t GetU32(const u_int8_t * p)
 {
@@ -308,7 +448,7 @@ static u_int32_t GetU32(const u_int8_t * p)
 
 
 /* the options of a segment as tcpdump: [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7] */
-static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n)
+static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n, u_int32_t sack_base)
 {
   u_int32_t pos = 0, olen, i;
   int first = 1;
@@ -340,10 +480,16 @@ static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n)
       if (olen == 4) {
 	printf("mss %u", (o[pos + 2] << 8) | o[pos + 3]);
       }
+      else {
+	printf("mss[len %u]", olen);
+      }
       break;
     case TCPOPT_WSCALE:
       if (olen == 3) {
 	printf("wscale %u", o[pos + 2]);
+      }
+      else {
+	printf("wscale[len %u]", olen);
       }
       break;
     case TCPOPT_SACKOK:
@@ -352,12 +498,15 @@ static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n)
     case TCPOPT_SACK:
       printf("sack %u", (olen - 2) / 8);
       for (i = pos + 2; i + 8 <= pos + olen; i += 8) {
-	printf(" {%u:%u}", GetU32(o + i), GetU32(o + i + 4));
+	printf("%s{%u:%u}", (i == pos + 2) ? " " : "", GetU32(o + i) - sack_base, GetU32(o + i + 4) - sack_base);
       }
       break;
     case TCPOPT_TIMESTAMP:
       if (olen == 10) {
 	printf("TS val %u ecr %u", GetU32(o + pos + 2), GetU32(o + pos + 6));
+      }
+      else {
+	printf("TS[len %u]", olen);
       }
       break;
     case TCPOPT_MPTCP:
@@ -378,15 +527,15 @@ static void PrintTcpdumpOptions(const u_int8_t * o, u_int32_t n)
 
 
 /* the line of a segment with --tcpdump: Flags [S.], seq 1:518, ack 1,
- * win 502, options [...], length 517 (sequence numbers absolute, as
- * tcpdump -S: they would need to remember the connections) */
-static void PrintTcpdumpTCP(TCPHdr * tcptr, const u_int8_t * opt, u_int32_t optlen, u_int32_t dsize)
+ * win 502, options [...], length 517 */
+static void PrintTcpdumpTCP(TCPHdr * tcptr, TCPNumbers * nums, const u_int8_t * opt, u_int32_t optlen,
+			    u_int32_t dsize)
 {
   static const struct { u_int8_t bit; char c; } flag_chars[] = {
     { TH_FIN, 'F' }, { TH_SYN, 'S' }, { TH_RST, 'R' }, { TH_PUSH, 'P' },
-    { TH_URG, 'U' }, { TH_ECE, 'E' }, { TH_CWR, 'W' }, { TH_ACK, '.' }
+    { TH_ACK, '.' }, { TH_URG, 'U' }, { TH_ECE, 'E' }, { TH_CWR, 'W' }
   };
-  u_int32_t seq = ntohl(tcptr->th_seq);
+  u_int32_t seq = nums->seq;
   u_int8_t flags = tcptr->th_flags;
   unsigned int i;
 
@@ -405,14 +554,14 @@ static void PrintTcpdumpTCP(TCPHdr * tcptr, const u_int8_t * opt, u_int32_t optl
     printf(", seq %u", seq);
   }
   if (flags & TH_ACK) {
-    printf(", ack %u", (u_int32_t) ntohl(tcptr->th_ack));
+    printf(", ack %u", nums->ack);
   }
   printf(", win %u", ntohs(tcptr->th_win));
   if (flags & TH_URG) {
     printf(", urg %u", ntohs(tcptr->th_urp));
   }
   if (optlen > 0) {
-    PrintTcpdumpOptions(opt, optlen);
+    PrintTcpdumpOptions(opt, optlen, nums->sack_base);
   }
   printf(", length %u\n", dsize);
 }
@@ -578,6 +727,7 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   u_int16_t sp;       /* source port TCP */
   u_int16_t dp;       /* dest port TCP */
   u_int32_t dsize;    /* packet payload size */
+  TCPNumbers nums;    /* sequence and acknowledgement, maybe relative */
 
   if (send_esc) {
     SETCOLOR(TCP_COLOR);
@@ -626,8 +776,10 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
       return;
     }
 
+  RelativeNumbers(tcptr, iptr, ip6ptr, &nums);
+
   if (tcpdump_mode) { /* one line as tcpdump, then the application */
-    PrintTcpdumpTCP(tcptr, pkt + TCP_HEADER_LEN, hlen - TCP_HEADER_LEN, len - hlen);
+    PrintTcpdumpTCP(tcptr, &nums, pkt + TCP_HEADER_LEN, hlen - TCP_HEADER_LEN, len - hlen);
     if (len > hlen) {
       DecodeTCPPayload(sp, dp, pkt + hlen, len - hlen);
     }
@@ -637,10 +789,16 @@ void DecodeTCP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
   /* flags, sequence and acknowledgement numbers, window */
   PrintTCPFlags(tcptr->th_flags);
 
-  printf("  Seq: %u", (u_int32_t) ntohl(tcptr->th_seq));
+  printf("  Seq: %u", nums.seq);
+  if (nums.seq_relative && (verb > 0)) { /* the absolute one too */
+    printf(" (%u)", (u_int32_t) ntohl(tcptr->th_seq));
+  }
 
   if (tcptr->th_flags & TH_ACK) {
-    printf("  Ack: %u", (u_int32_t) ntohl(tcptr->th_ack));
+    printf("  Ack: %u", nums.ack);
+    if (nums.ack_relative && (verb > 0)) {
+      printf(" (%u)", (u_int32_t) ntohl(tcptr->th_ack));
+    }
   }
 
   printf("  Win: %d", ntohs(tcptr->th_win));

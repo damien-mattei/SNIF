@@ -85,6 +85,9 @@ typedef struct _TCPHdr
 #define TH_CWR  0x80 /* Congestion Window Reduced (RFC 3168) */
 
 /* TCP options (taken from snort 2.9.20 decode.h and IANA registry) */
+#define TCP_CONN_SIZE           4096    /* connections remembered, a power of two */
+#define TCP_CONN_PROBES         4
+
 #define TCPOPT_EOL              0   /* End of Option List, 1 byte */
 #define TCPOPT_NOP              1   /* No Operation, 1 byte */
 #define TCPOPT_MAXSEG           2   /* Maximum Segment Size, 4 bytes */

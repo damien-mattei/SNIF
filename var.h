@@ -60,6 +60,22 @@ int one_line = 0; /* one line by packet (-1) */
 
 int tcpdump_mode = 0; /* one line in the format of tcpdump (--tcpdump) */
 
+int absolute_seq = 0; /* absolute TCP sequence numbers (--absolute) */
+
+int print_number = 0; /* number of each packet (-#, --number) */
+
+char * pcap_outfile = NULL; /* write the packets to a pcap file (-w) */
+
+int print_written = 0; /* show them too while writing (--print) */
+
+pcap_dumper_t * dumper = NULL; /* the file written */
+
+int buffer_size = 0; /* size of the kernel buffer in KiB (-B), 0: the default */
+
+int direction = 0; /* -Q in, out or inout */
+
+int direction_set = 0; /* -Q given */
+
 unsigned long packets_captured = 0; /* decoded by snif */
 
 int send_esc = 1; /* send escape sequence to terminal

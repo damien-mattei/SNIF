@@ -20,6 +20,14 @@ common options:
      10:57:03.123456  IP 192.168.1.30 > 192.168.1.1  UDP 41234 > 53 (domain)
        DNS query 0x1a2b  Question: apple.com A
 
+-w file : write the packets to a pcap file (not shown, unless --print)
+
+-D : list the interfaces;  -Q in|out|inout : direction of the packets;
+-# : number of each packet;  -B size : kernel buffer in KiB
+
+--absolute : absolute TCP sequence numbers; by default they are relative
+     to the start of the connection, as in tcpdump (seq 1:518, ack 1)
+
 --tcpdump : one line by packet in the format of tcpdump, in colors:
 
      11:15:16.018629 IP acer.36322 > www.gnu.org.https: Flags [S], seq 242255833, win 64800, options [mss 1440,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0

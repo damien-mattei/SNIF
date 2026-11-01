@@ -111,6 +111,8 @@ void SigWinChHandler(int); /* handler for window size change */
 #define HASH_SIZE(n) (2 * (n) + 1)
 
 #define OPT_TCPDUMP     256     /* --tcpdump, a long option only */
+#define OPT_ABSOLUTE    257     /* --absolute */
+#define OPT_PRINT       258     /* --print */
 
 #define SNAPLEN 262144 /* bytes captured per packet, as tcpdump (BUFSIZ cut the big ones) */
 

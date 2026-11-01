@@ -365,6 +365,12 @@ void CleanExit(int exit_val)
     NORMALMODE();fflush(stdout);
   }
 
+  /* the file written with -w */
+  if (dumper != NULL) {
+    pcap_dump_close(dumper);
+    dumper = NULL;
+  }
+
   /* close pcap */
   if(descr) {
     PrintCaptureStats();
@@ -1254,14 +1260,36 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
 
     u_int32_t cap_len;      /* capture length value */
 
+    if (dumper != NULL) { /* -w: the packet goes to the file */
+      pcap_dump((u_char *) dumper, pkthdr, pkt);
+      if (!print_written) {
+	packets_captured++;
+	return;
+      }
+    }
+
     if (send_esc) {
       NORMALMODE();
+    }
+
+    if (print_number) { /* -#: the number of the packet, as tcpdump */
+      if (one_line) {
+	printf("%lu ", packets_captured + 1);
+      }
+      else if (ts_format == TS_NONE) {
+	printf("Packet %lu\n", packets_captured + 1);
+      }
     }
 
     if (ts_format != TS_NONE) {
       /* time info about reception of packet */
       if (!one_line) {
-	printf("Packet received at ..... ");
+	if (print_number) {
+	  printf("Packet %lu received at ..... ", packets_captured + 1);
+	}
+	else {
+	  printf("Packet received at ..... ");
+	}
       }
       if (send_esc) { /* the date in soft white, to find the packets */
 	SETCOLORONLY(COLOR256(254, WHITE));
@@ -1360,6 +1388,56 @@ static int Terminal256Colors(void)
 
 
 /*
+ * Function: ListInterfaces(void)
+ *
+ * Purpose: list the interfaces snif can capture on, as tcpdump -D: their
+ *          number, name, description and state
+ *
+ * Returns: void function
+ */
+static void ListInterfaces(void)
+{
+  pcap_if_t * alldevs, * d;
+  char errbuf[PCAP_ERRBUF_SIZE];
+  int i = 1;
+
+  if (pcap_findalldevs(&alldevs, errbuf) != 0) {
+    fprintf(stderr, "pcap_findalldevs(): %s\n", errbuf);
+    return;
+  }
+
+  for (d = alldevs; d != NULL; d = d->next, i++) {
+    printf("%d.%s", i, d->name);
+    if (d->description != NULL) {
+      printf(" (%s)", d->description);
+    }
+    printf(" [%s%s%s%s", (d->flags & PCAP_IF_UP) ? "Up" : "Down",
+	   (d->flags & PCAP_IF_RUNNING) ? ", Running" : "",
+	   (d->flags & PCAP_IF_LOOPBACK) ? ", Loopback" : "",
+#ifdef PCAP_IF_WIRELESS
+	   (d->flags & PCAP_IF_WIRELESS) ? ", Wireless" : ""
+#else
+	   ""
+#endif
+	   );
+#ifdef PCAP_IF_CONNECTION_STATUS
+    switch (d->flags & PCAP_IF_CONNECTION_STATUS) {
+    case PCAP_IF_CONNECTION_STATUS_CONNECTED:
+      printf(", %s", (d->flags & PCAP_IF_WIRELESS) ? "Associated" : "Connected");
+      break;
+    case PCAP_IF_CONNECTION_STATUS_DISCONNECTED:
+      printf(", %s", (d->flags & PCAP_IF_WIRELESS) ? "Not associated" : "Disconnected");
+      break;
+    }
+#endif
+    printf("]\n");
+  }
+
+  pcap_freealldevs(alldevs);
+}
+
+
+/*
  * Function: ParseCmdLine(int, char *)
  *
  * Purpose:  Parse command line args
@@ -1377,10 +1455,13 @@ void ParseCmdLine(int argc, char *argv[])
   /* loop through each command line var and process it */
   static const struct option long_options[] = {
     { "tcpdump", no_argument, NULL, OPT_TCPDUMP },
+    { "absolute", no_argument, NULL, OPT_ABSOLUTE },
+    { "print", no_argument, NULL, OPT_PRINT },
+    { "number", no_argument, NULL, '#' },
     { NULL, 0, NULL, 0 }
   };
 
-  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1", long_options, NULL)) != EOF)
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1400,6 +1481,12 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -t : don't show time stamps; -tt: seconds since 1970, -ttt: since the previous\n");
 	printf("      packet, -tttt: date and time, -ttttt: since the first packet\n");
 	printf(" -1 : one line by packet: the main line of each layer, in its color\n");
+	printf(" -w file : write the packets to a pcap file (shown too with --print)\n");
+	printf(" -D : list the interfaces\n");
+	printf(" -Q in|out|inout : the direction of the packets captured\n");
+	printf(" -# (--number) : the number of each packet\n");
+	printf(" -B size : size of the kernel buffer in KiB\n");
+	printf(" --absolute : absolute TCP sequence numbers (relative by default, as tcpdump)\n");
 	printf(" --tcpdump : one line by packet in the format of tcpdump, in colors, with the\n");
 	printf("      names of the hosts learned without traffic (this machine, /etc/hosts, DNS seen)\n");
 	printf(" -s : disable the sending of escape sequences to terminal (no color!)\n");
@@ -1454,6 +1541,51 @@ void ParseCmdLine(int argc, char *argv[])
 
       case '1':
 	one_line = 1;
+	break;
+
+      case 'w':
+	pcap_outfile = optarg;
+	break;
+
+      case OPT_PRINT:
+	print_written = 1;
+	break;
+
+      case OPT_ABSOLUTE:
+	absolute_seq = 1;
+	break;
+
+      case '#':
+	print_number = 1;
+	break;
+
+      case 'D':
+	ListInterfaces();
+	exit(0);
+
+      case 'Q':
+	if (strcmp(optarg, "in") == 0) {
+	  direction = PCAP_D_IN;
+	}
+	else if (strcmp(optarg, "out") == 0) {
+	  direction = PCAP_D_OUT;
+	}
+	else if (strcmp(optarg, "inout") == 0) {
+	  direction = PCAP_D_INOUT;
+	}
+	else {
+	  fprintf(stderr, "-Q: in, out or inout, not %s\n", optarg);
+	  exit(1);
+	}
+	direction_set = 1;
+	break;
+
+      case 'B':
+	buffer_size = atoi(optarg);
+	if (buffer_size <= 0) {
+	  fprintf(stderr, "-B: a size in KiB, not %s\n", optarg);
+	  exit(1);
+	}
 	break;
 
       case OPT_TCPDUMP: /* one line as tcpdump, in colors */
@@ -2542,7 +2674,32 @@ int main(int argc, char **argv) {
          promisuous mode)                                               */
 
 
-      descr = pcap_open_live(dev,SNAPLEN,promisc,PACKETS_READ_TIMEOUT,errbuf);
+      /* as pcap_open_live(), with the size of the kernel buffer (-B) */
+      descr = pcap_create(dev, errbuf);
+
+      if (descr != NULL) {
+	int status;
+
+	pcap_set_snaplen(descr, SNAPLEN);
+	pcap_set_promisc(descr, promisc);
+	pcap_set_timeout(descr, PACKETS_READ_TIMEOUT);
+	if (buffer_size > 0) {
+	  pcap_set_buffer_size(descr, buffer_size * 1024);
+	}
+	status = pcap_activate(descr);
+	if (status < 0) {
+	  snprintf(errbuf, PCAP_ERRBUF_SIZE, "%s", pcap_geterr(descr));
+	  pcap_close(descr);
+	  descr = NULL;
+	}
+	else if (status > 0) { /* a warning */
+	  fprintf(stderr, "pcap_activate(): %s\n", pcap_geterr(descr));
+	}
+      }
+
+      if ((descr != NULL) && direction_set && (pcap_setdirection(descr, direction) != 0)) {
+	fprintf(stderr, "-Q: %s\n", pcap_geterr(descr));
+      }
 
       if(descr == NULL)
         {
@@ -2577,6 +2734,16 @@ int main(int argc, char **argv) {
       pcap_freecode(&filter_code);
 
       printf("FILTER: %s\n", capture_filter);
+    }
+
+    /* -w: the packets kept go to a pcap file */
+    if (pcap_outfile != NULL) {
+      dumper = pcap_dump_open(descr, pcap_outfile);
+      if (dumper == NULL) {
+	fprintf(stderr, "-w %s: %s\n", pcap_outfile, pcap_geterr(descr));
+	CleanExit(1);
+      }
+      printf("WRITING: %s%s\n", pcap_outfile, print_written ? "" : " (packets not shown, --print to show them)");
     }
 
     datalink = pcap_datalink(descr);
