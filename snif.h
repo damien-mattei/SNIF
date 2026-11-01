@@ -34,6 +34,9 @@ void DecodeFDDIPkt(struct pcap_pkthdr *, u_int8_t *); /* Decode FDDI Packet */
 void DecodeIEEE80211Pkt(struct pcap_pkthdr * , u_int8_t * ); /* Decode Wifi Packet */
 void DecodeRadiotapPkt(struct pcap_pkthdr * , u_int8_t * ); /* Decode Wifi Packet with radiotap header (monitor mode) */
 void DecodeIEEE80211Frame(u_int8_t *, u_int32_t); /* Decode an IEEE 802.11 frame */
+void DecodeNFLOGPkt(struct pcap_pkthdr *, u_int8_t *); /* Decode a packet logged by the Linux firewall */
+void DecodeUSBPkt(struct pcap_pkthdr *, u_int8_t *); /* Decode a USB exchange of usbmon */
+void DecodeUSBMmapPkt(struct pcap_pkthdr *, u_int8_t *); /* the same, memory mapped header */
 void DecodeLinuxSLLPkt(struct pcap_pkthdr * , u_int8_t *); /* Decode linux cooked sockets */
 void DecodeLinuxSLL2Pkt(struct pcap_pkthdr * , u_int8_t *); /* Decode linux cooked sockets version 2 */
 void DecodeChdlcPkt(struct pcap_pkthdr *, u_int8_t *); /* Decodes Cisco HDLC encapsulated packets */

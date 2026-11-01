@@ -21,6 +21,8 @@ flow.c flow.h \
 ldp.c ldp.h \
 rtp.c rtp.h \
 names.c names.h \
+nflog.c nflog.h \
+usb.c usb.h \
 sflow.c sflow.h \
 ptp.c ptp.h \
 cfm.c cfm.h \

@@ -2880,6 +2880,39 @@ int main(int argc, char **argv) {
             break;
 #endif
 
+#ifdef DLT_NFLOG
+    case DLT_NFLOG:   /* the Linux firewall: -i nflog:group */
+
+            printf("Data link type is NFLOG.\n");
+            grinder = DecodeNFLOGPkt;
+
+            break;
+#endif
+
+#ifdef DLT_USB_LINUX
+    case DLT_USB_LINUX:   /* the module usbmon: -i usbmon1 */
+
+            printf("Data link type is USB (usbmon).\n");
+	    if (tcpdump_mode) { /* --tcpdump hides the link layer, here it is what can be read */
+	      dump_link_layer = 1;
+	    }
+            grinder = DecodeUSBPkt;
+
+            break;
+#endif
+
+#ifdef DLT_USB_LINUX_MMAPPED
+    case DLT_USB_LINUX_MMAPPED:
+
+            printf("Data link type is USB (usbmon).\n");
+	    if (tcpdump_mode) {
+	      dump_link_layer = 1;
+	    }
+            grinder = DecodeUSBMmapPkt;
+
+            break;
+#endif
+
 #ifdef DLT_PFLOG
         case DLT_PFLOG:
            
