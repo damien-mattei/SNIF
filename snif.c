@@ -57,6 +57,7 @@
 #include <netinet/if_ether.h> /* includes net/ethernet.h */
 #include <unistd.h> /* added for getopt() and optarg */
 
+#include <ctype.h>
 #include <getopt.h> /* getopt_long, for --tcpdump */
 
 #include <limits.h> /* PATH_MAX */
@@ -1404,6 +1405,109 @@ static int LocaleIsUTF8(void)
 }
 
 
+/* ParseHexSearch
+ * "de ad be ef", "0xdeadbeef" or "de:ad" -> bytes; returns their number, 0 if invalid
+ */
+static int ParseHexSearch(const char * s, u_char * out)
+{
+  int n = 0, half = -1, v;
+
+  if ((s[0] == '0') && ((s[1] == 'x') || (s[1] == 'X'))) {
+    s += 2;
+  }
+  for (; *s; s++) {
+    if ((*s == ' ') || (*s == ':') || (*s == '-')) {
+      continue;
+    }
+    if (!isxdigit((unsigned char) *s)) {
+      return 0;
+    }
+    v = isdigit((unsigned char) *s) ? *s - '0' : (tolower((unsigned char) *s) - 'a' + 10);
+    if (half < 0) {
+      half = v;
+    }
+    else {
+      out[n++] = (half << 4) | v;
+      half = -1;
+    }
+  }
+  return (half < 0) ? n : 0;
+}
+
+/* PayloadOffset
+ * where the data of the packet begin, after the headers of the link, IP and
+ * TCP or UDP layers; the end of the headers for the other protocols
+ */
+static u_int32_t PayloadOffset(const u_char * pkt, u_int32_t len)
+{
+  u_int32_t off = LinkHeaderLength(pkt, len), hl;
+  u_int8_t proto;
+
+  if (off >= len) {
+    return len;
+  }
+  if ((pkt[off] >> 4) == 4) {
+    if (off + 20 > len) {
+      return len;
+    }
+    hl = (pkt[off] & 0x0f) * 4;
+    proto = pkt[off + 9];
+    if ((pkt[off + 6] & 0x1f) || pkt[off + 7]) {
+      proto = 0; /* a fragment other than the first: no transport header */
+    }
+    off += hl;
+  }
+  else if ((pkt[off] >> 4) == 6) {
+    int n;
+
+    if (off + 40 > len) {
+      return len;
+    }
+    proto = pkt[off + 6];
+    off += 40;
+    for (n = 0; (n < 8) && (off + 8 <= len); n++) {
+      if ((proto == 0) || (proto == 43) || (proto == 60)) {
+	hl = (pkt[off + 1] + 1) * 8;
+      }
+      else if (proto == 44) {
+	hl = 8;
+      }
+      else if (proto == 51) {
+	hl = (pkt[off + 1] + 2) * 4;
+      }
+      else {
+	break;
+      }
+      proto = pkt[off];
+      off += hl;
+    }
+  }
+  else {
+    return off; /* ARP, other protocols: everything after the link layer */
+  }
+  if (off > len) {
+    return len;
+  }
+  if ((proto == 6) && (off + 13 <= len)) { /* TCP */
+    off += (pkt[off + 12] >> 4) * 4;
+  }
+  else if (proto == 17) { /* UDP */
+    off += 8;
+  }
+  return (off > len) ? len : off;
+}
+
+/* PacketMatches
+ * the text or bytes of -m / -M are in the data of the packet
+ */
+static int PacketMatches(const u_char * pkt, u_int32_t len)
+{
+  u_int32_t off = PayloadOffset(pkt, len);
+
+  return (len - off >= (u_int32_t) search_len)
+    && (memmem(pkt + off, len - off, search_str, search_len) != NULL);
+}
+
 /* ProcessPacket 
  * works on data link layer (layer 2)
  */
@@ -1423,6 +1527,10 @@ void ProcessPacket(char *user, struct pcap_pkthdr * pkthdr, u_char * pkt)
      */
 
     u_int32_t cap_len;      /* capture length value */
+
+    if ((search_len > 0) && !PacketMatches(pkt, pkthdr->caplen)) {
+      return; /* -m, -M: the data do not hold the text */
+    }
 
     if (pcap_outfile != NULL) { /* -w: the packet goes to the file */
       if (RotateDumpFile(pkthdr) != 0) {
@@ -1735,7 +1843,7 @@ void ParseCmdLine(int argc, char *argv[])
     { NULL, 0, NULL, 0 }
   };
 
-  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:IC:G:W:AF:Z:", long_options, NULL)) != EOF)
+  while((ch = getopt_long(argc, argv, "i:c:f:hvqpedtsSnlargKx8T:1w:DQ:#B:IC:G:W:AF:Z:m:M:", long_options, NULL)) != EOF)
     {
       switch(ch) {
 
@@ -1777,6 +1885,8 @@ void ParseCmdLine(int argc, char *argv[])
 	printf(" -K : don't verify TCP and UDP checksums (checksum offloading)\n");
 	printf(" -x : dump the packets in hexadecimal and ASCII\n");
 	printf(" -A : dump the packets in ASCII, without their link layer header\n");
+	printf(" -m text : only the packets whose data (not the headers) hold this text\n");
+	printf(" -M hex : same with bytes in hexadecimal (\"de ad be ef\" or 0xdeadbeef)\n");
 	printf(" -F file : read the capture filter from a file (# starts a comment)\n");
 	printf(" -Z user : run as this user once the capture is open (when started as root)\n");
 	printf(" -8 : use only the 8 basic colors, even if the terminal knows 256 colors\n");
@@ -1792,6 +1902,20 @@ void ParseCmdLine(int argc, char *argv[])
 
       case 'A':
 	dump_ascii = 1;
+	break;
+
+      case 'm': /* search a text in the data of the packets */
+	search_len = strlen(optarg);
+	search_str = (u_char *) optarg;
+	break;
+
+      case 'M': /* search bytes given in hexadecimal */
+	search_str = (u_char *) malloc(strlen(optarg) / 2 + 1);
+	search_len = ParseHexSearch(optarg, search_str);
+	if (search_len == 0) {
+	  fprintf(stderr, "-M: hexadecimal bytes expected (\"de ad be ef\")\n");
+	  exit(1);
+	}
 	break;
 
       case 'F':

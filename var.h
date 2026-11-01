@@ -139,6 +139,8 @@ int outgoing_pkt = 0; /* the packet was sent by us: its TCP/UDP checksum
 u_int8_t my_mac[6]; /* hardware address of the interface we capture on */
 int my_mac_known = 0;
 
+u_char * search_str = NULL; /* -m, -M: what to find in the data of the packets */
+int search_len = 0;
 int dump_hex = 0; /* dump the packets in hexadecimal and ASCII (-x) */
 
 int colors256 = 0; /* the terminal knows the 256 colors palette,

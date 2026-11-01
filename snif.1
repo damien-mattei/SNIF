@@ -132,6 +132,17 @@ Show each packet in ASCII after its decoding, without its link layer
 header, as
 .BR "tcpdump \-A" .
 .TP
+.BI \-m " text"
+Show only the packets whose data hold this text. The headers (link,
+IP, TCP, UDP) are not searched, only what follows them. Each packet is
+searched alone: a text cut between two packets is not found.
+.TP
+.BI \-M " hex"
+Same with bytes in hexadecimal:
+.B \-M "de ad be ef"
+or
+.BR "\-M 0xdeadbeef" .
+.TP
 .BI \-F " file"
 Read the capture filter from a file; from a # to the end of a line is a
 comment.
