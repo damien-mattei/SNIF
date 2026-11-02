@@ -88,3 +88,7 @@ This program deals with a lot of link layer protocols (network layer 2) but due 
 -Apple USB Adapter
 
 Some other link layer needs to be tested (ex: Token Ring), if you find any bug send me an email please.
+
+--------
+
+snif is independent of tcpdump: it shares no code with it. The --tcpdump option only imitates the format of its output (a line per packet, in colors); tcpdump is a trademark of the Tcpdump Group, and snif is neither made nor endorsed by it. snif is distributed under the GNU GPL (version 2 or later) and uses libpcap (BSD license).
