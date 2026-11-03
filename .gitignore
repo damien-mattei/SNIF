@@ -17,3 +17,6 @@
 # editor backups
 *~
 *.bak
+fuzz/build/
+fuzz/out/
+fuzz/corpus/
