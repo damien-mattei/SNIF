@@ -18,5 +18,5 @@
 *~
 *.bak
 fuzz/build/
-fuzz/out/
+fuzz/out*/
 fuzz/corpus/
