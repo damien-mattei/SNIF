@@ -127,6 +127,7 @@ void DecodeSlowProtocols(u_int8_t * pkt, u_int32_t len)
   u_int32_t pos;
   u_int8_t type, tlen;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

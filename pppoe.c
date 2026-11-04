@@ -199,6 +199,7 @@ void DecodePPPoE(u_int8_t * pkt, const u_int32_t len)
     u_int32_t plen;   /* payload length given by the header */
     const char * name;
 
+    LayerMain(); /* its own line, kept by -1 */
     if (send_esc) {
       SETCOLOR(DATA_LINK_LAYER_COLOR);
     }

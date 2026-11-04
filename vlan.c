@@ -89,6 +89,7 @@ void DecodeVlan(u_int8_t * pkt, const u_int32_t len,struct pcap_pkthdr * pkthdr)
   u_int8_t * payload;   /* encapsulated packet */
   u_int32_t plen;       /* length of the encapsulated packet */
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

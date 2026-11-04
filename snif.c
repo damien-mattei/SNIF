@@ -1187,6 +1187,24 @@ void OneLineKeep(int n)
 
 
 /*
+ * Function: LayerMain(void)
+ *
+ * Purpose: a protocol in the same layer, and so the same color, as the
+ *          previous line (CDP, LACP, PPP LCP over Ethernet or PPP...): its
+ *          first line is a main line, in the bright shade, kept by -1
+ *
+ * Returns: void function
+ */
+void LayerMain(void)
+{
+  layer_detail = 0;
+  if (send_esc && (symbol_color != -1)) {
+    SETCOLORONLY(symbol_color);
+  }
+}
+
+
+/*
  * Function: SetColor(int)
  *
  * Purpose: set a color: with 256 colors, the color of the layer being

@@ -109,6 +109,7 @@ void DecodeMPLS(u_int8_t * pkt, u_int32_t len, struct pcap_pkthdr * pkthdr)
     pos += MPLS_LABEL_LEN;
 
     if (count++ < MPLS_MAX_LABELS) {
+      LayerMain(); /* its own line, kept by -1 */
       printf("MPLS label %u", label);
       if ((label < 16) && (mpls_reserved[label] != NULL)) {
 	printf(" (%s)", mpls_reserved[label]);

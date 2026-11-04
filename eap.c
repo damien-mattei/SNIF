@@ -275,6 +275,7 @@ void DecodeEapol(u_int8_t * pkt, u_int32_t len)
     EtherEapol * eapolptr;
     u_int16_t blen;    /* body length */
 
+    LayerMain(); /* its own line, kept by -1 */
     if (send_esc) {
       SETCOLOR(DATA_LINK_LAYER_COLOR);
     }

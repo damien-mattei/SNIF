@@ -184,11 +184,13 @@ void DecodeOtherEtherType(u_int16_t type, u_int8_t * pkt, u_int32_t len, struct 
 
   for (i = 0; ether_type_name[i].name != NULL; i++) {
     if (ether_type_name[i].type == type) {
+      LayerMain(); /* its own line, kept by -1 */
       printf("Ethertype 0x%04x: %s, not decoded\n", type, ether_type_name[i].name);
       return;
     }
   }
 
+  LayerMain();
   printf("Unknown ethertype 0x%04x\n", type);
 }
 

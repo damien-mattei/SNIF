@@ -264,6 +264,7 @@ void DecodeCFM(u_int8_t * pkt, u_int32_t len)
   u_int32_t n, tlv;
   u_int8_t op, flags;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }
@@ -397,6 +398,7 @@ void DecodeMACsec(u_int8_t * pkt, u_int32_t len, struct pcap_pkthdr * pkthdr)
   u_int16_t type;
   u_int8_t tci;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

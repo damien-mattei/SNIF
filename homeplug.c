@@ -157,6 +157,7 @@ void DecodeHomePlug(u_int8_t * pkt, u_int32_t len)
   u_int32_t pos, n, i;
   u_int8_t met, mev, melen;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }
@@ -231,6 +232,7 @@ void DecodeHomePlugAV(u_int8_t * pkt, u_int32_t len)
   u_int8_t mmv;
   const char * name = NULL;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

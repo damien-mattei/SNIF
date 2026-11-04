@@ -130,6 +130,7 @@ void DecodeVTP(u_int8_t * pkt, u_int32_t len)
   u_int32_t pos, ilen, count = 0;
   u_int8_t code;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }
@@ -237,6 +238,7 @@ void DecodeDTP(u_int8_t * pkt, u_int32_t len)
   u_int16_t type, tlen;
   const u_int8_t * v;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }
@@ -310,6 +312,7 @@ void DecodeUDLD(u_int8_t * pkt, u_int32_t len)
   const u_int8_t * v;
   u_int8_t op;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

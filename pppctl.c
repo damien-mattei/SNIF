@@ -655,6 +655,7 @@ void DecodePPPControl(u_int16_t proto, u_int8_t * pkt, u_int32_t len)
   u_int32_t n, data;
   u_int8_t code;
 
+  LayerMain(); /* its own line, kept by -1 */
   if (send_esc) {
     SETCOLOR(DATA_LINK_LAYER_COLOR);
   }

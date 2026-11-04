@@ -57,6 +57,7 @@ void LayerSymbol(int); /* show the symbol of the layer shown in a color (-S) */
 void SetColor(int); /* set a color, in the shade of the line of its layer */
 
 void OneLineKeep(int); /* with -1, join the next lines of the layer to its first one */
+void LayerMain(void); /* the next line is a main line, though in the same layer */
 
 /* escape sequence of the foreground color c: 38;5;n in the palette
  * of 256 colors, 30 + color in the palette of 8 colors */
