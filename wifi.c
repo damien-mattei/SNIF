@@ -622,8 +622,11 @@ void DecodeIEEE80211Frame(u_int8_t * pkt, u_int32_t len)
     else if ((type == WLAN_TYPE_MGMT) || (type == WLAN_TYPE_DATA)) {
 
       u_int8_t * bssid = NULL; /* access point */
+      /* the management frames have always the same three addresses: their
+       * To DS and From DS bits mean nothing (and their header ends at 24) */
+      u_int8_t ds = (type == WLAN_TYPE_MGMT) ? 0 : (flags & (WLAN_FC_TODS | WLAN_FC_FROMDS));
 
-      switch (flags & (WLAN_FC_TODS | WLAN_FC_FROMDS)) {
+      switch (ds) {
       case 0:
 	da = pkt + 4; sa = pkt + 10; bssid = pkt + 16;
 	break;
@@ -643,7 +646,7 @@ void DecodeIEEE80211Frame(u_int8_t * pkt, u_int32_t len)
       PrintWifiAddr(da);
 
       if (bssid != NULL) {
-	printf("  %s ", (flags & (WLAN_FC_TODS | WLAN_FC_FROMDS)) ? "via AP" : "BSSID");
+	printf("  %s ", ds ? "via AP" : "BSSID");
 	PrintWifiAddr(bssid);
       }
       else {
