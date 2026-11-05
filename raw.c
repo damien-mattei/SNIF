@@ -64,6 +64,12 @@ void DecodeRawPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 
     }
 
+    /* no link layer header to tell the protocol: read the IP version */
+    if ((pkthdr->caplen > 0) && ((pkt[0] >> 4) == 6)) {
+      DecodeIPV6(pkt, pkthdr->caplen, pkthdr);
+      return;
+    }
+
     DecodeIP(pkt, pkthdr->caplen);
 
   return;
