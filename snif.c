@@ -1233,7 +1233,14 @@ void SetColor(int color)
 }
 
 
-#ifdef HAVE_FOPENCOOKIE
+/* macOS has no fopencookie: its funopen makes the same kind of stream.
+ * Chosen here, not by configure, to keep the generated autotools files
+ * of the other machines as they are */
+#if !defined(HAVE_FOPENCOOKIE) && defined(__APPLE__)
+#define USE_FUNOPEN
+#endif
+
+#if defined(HAVE_FOPENCOOKIE) || defined(USE_FUNOPEN)
 /*
  * Function: LayerWrite(void *, const char *, size_t)
  *
@@ -1303,6 +1310,24 @@ static ssize_t LayerWrite(void * cookie, const char * buf, size_t size)
 #endif
 
 
+#ifdef USE_FUNOPEN
+/*
+ * Function: LayerWriteFunopen(void *, const char *, int)
+ *
+ * Purpose: LayerWrite with the sizes in int that funopen asks for
+ *
+ * Arguments: cookie => unused
+ *            buf, size => the text written
+ *
+ * Returns: the size written
+ */
+static int LayerWriteFunopen(void * cookie, const char * buf, int size)
+{
+  return (int) LayerWrite(cookie, buf, (size_t) size);
+}
+#endif
+
+
 /*
  * Function: FilterLayers(void)
  *
@@ -1320,6 +1345,20 @@ static int FilterLayers(void)
   fflush(stdout);
 
   stream = fopencookie(NULL, "w", layers);
+  if (stream == NULL) {
+    return 0;
+  }
+
+  setvbuf(stream, NULL, _IONBF, 0);
+  terminal = stdout;
+  stdout = stream;
+  return 1;
+#elif defined(USE_FUNOPEN)
+  FILE * stream;
+
+  fflush(stdout);
+
+  stream = funopen(NULL, NULL, LayerWriteFunopen, NULL, NULL);
   if (stream == NULL) {
     return 0;
   }
