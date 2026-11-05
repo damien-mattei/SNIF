@@ -133,7 +133,7 @@ int check_cksum = 1; /* verify TCP and UDP checksums,
 		      * compute them after the capture (checksum offloading)
 		      */
 
-int outgoing_pkt = 0; /* the packet was sent by us: its TCP/UDP checksum
+int outgoing_pkt = 0; /* the packet was sent by us: its IP/TCP/UDP checksums
 		       * may be computed by the network card after the capture */
 
 u_int8_t my_mac[6]; /* hardware address of the interface we capture on */

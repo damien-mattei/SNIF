@@ -53,6 +53,7 @@
 
 
 
+extern int outgoing_pkt; /* the packet was sent by us */
 extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
 
 extern int send_esc; /* send escape sequence to terminal
@@ -385,8 +386,13 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
     
     if(csum) {
-      printf("Bad IP checksum\n");
-      return;
+      if (!outgoing_pkt) {
+	printf("Bad IP checksum\n");
+	return;
+      }
+      if (verb > 0) { /* not computed yet when we captured it */
+	printf("IP Checksum: not verified (sent by us, computed by the network card)\n");
+      }
     }
     else {
       if (verb > 0) {

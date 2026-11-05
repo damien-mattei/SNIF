@@ -68,6 +68,10 @@ pcap('l2', [eth(b'\x42\x42\x03\0\0\0\0' + b'\0'*35, 38, d=b'\x01\x80\xc2\0\0\0')
 pcap('sll', [b'\0\0\x03\x04\0\x06' + M1 + b'\0\0' + b'\x08\x00' + ip4(1, b'\x08\0\0\0\0\1\0\1'),
              b'\0\0\0\x01\0\x06' + M1 + b'\0\0' + b'\x86\xdd' + ip6(58, b'\x80\0\0\0\0\0\0\0')], dlt=113)
 pcap('null', [struct.pack('<I', 2) + ip4(6, tcp(2)), struct.pack('<I', 30) + ip6(17, udp(1, 2, b'x'))], dlt=0)
+# lo0 of macOS leaves the IP checksum at 0; any other wrong value stays a bad checksum
+lo = ip4(6, tcp(2))
+pcap('lo0_cksum', [struct.pack('<I', 2) + lo[:10] + b'\0\0' + lo[12:],
+                   struct.pack('<I', 2) + lo[:10] + b'\xbe\xef' + lo[12:]], dlt=0)
 pcap('raw', [ip4(1, b'\x08\0\0\0\0\1\0\1'), ip6(6, tcp(2))], dlt=12)
 rt = b'\0\0\x0c\0\x04\x80\0\0\x02\0\x18\0'
 pcap('wifi', [rt + b'\x80\0\0\0' + b'\xff'*6 + M1 + M1 + b'\0\0' + b'\0'*8 + b'\x64\0\x11\0\0\4home\1\x08\x82\x84\x8b\x96\x0c\x12\x18\x24\3\1\6',

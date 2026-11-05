@@ -40,7 +40,8 @@
 
 #include "loopback.h"
 
-extern int dump_link_layer; /* dump network link layer info (ethernet address ,...) */
+extern int outgoing_pkt; /* the packet was sent by us */
+extern int dump_link_layer; /* dump network link layer info (ethernetaddress ,...) */
 
 /*
  * Function: DecodeLoopBackPkt( struct pcap_pkthdr*, u_int8_t*)
@@ -69,6 +70,13 @@ void DecodeLoopBackPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 	     pkthdr->caplen, NULL_HDRLEN);
       return;
     }
-  
+
+  /* macOS leaves the IPv4 checksum at 0 on lo0, and does not compute the
+   * TCP and UDP checksums: they are never sent on a wire */
+  if ((pkthdr->caplen >= NULL_HDRLEN + 12) && ((pkt[NULL_HDRLEN] >> 4) == 4)
+      && (pkt[NULL_HDRLEN + 10] == 0) && (pkt[NULL_HDRLEN + 11] == 0)) {
+    outgoing_pkt = 1;
+  }
+
   DecodeIP(pkt + NULL_HDRLEN, pkthdr->caplen - NULL_HDRLEN);
 }
