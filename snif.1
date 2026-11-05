@@ -282,12 +282,18 @@ in the sources.
 Capturing on an interface needs the capture privileges: run
 .B snif
 with
-.BR sudo ,
-or give them to the binary once (again after each build):
+.BR sudo .
+On Linux, they can also be given to the binary once (again after each build):
 .PP
 .RS
 sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/sbin/snif
 .RE
+.PP
+macOS has no
+.BR setcap :
+capturing needs read access to
+.IR /dev/bpf* ,
+which only root has by default.
 .PP
 Reading a file needs no privilege.
 .SH FILES

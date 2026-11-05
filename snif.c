@@ -73,6 +73,10 @@
 #include <netdb.h>  /* added to resolve IP in hostname */
 #include <time.h> /* added for DNS cache */
 #include <net/if.h> /* added for get_device_info */
+#ifdef __APPLE__
+#include <ifaddrs.h> /* for the hardware address in GetDeviceMAC */
+#include <net/if_dl.h>
+#endif
 #include <sys/types.h> /* added for getuid() */
 #include <string.h> /* added for strlen */
 
@@ -2613,6 +2617,28 @@ void GetDeviceMAC(char * device)
   }
 
   close(sd);
+#elif defined(__APPLE__)
+  struct ifaddrs * addrs;
+  struct ifaddrs * a;
+
+  if (getifaddrs(&addrs) != 0) {
+    return;
+  }
+
+  for (a = addrs; a != NULL; a = a->ifa_next) {
+    if ((a->ifa_addr != NULL) && (a->ifa_addr->sa_family == AF_LINK)
+	&& (strcmp(a->ifa_name, device) == 0)) {
+      struct sockaddr_dl * link = (struct sockaddr_dl *) a->ifa_addr;
+
+      if (link->sdl_alen == 6) {
+	memcpy(my_mac, LLADDR(link), 6);
+	my_mac_known = 1;
+      }
+      break;
+    }
+  }
+
+  freeifaddrs(addrs);
 #endif
 }
 
@@ -2624,9 +2650,10 @@ void GetDeviceMAC(char * device)
  */
 int get_device_info(void)
 {
-  int i, sd, numdevs;
+  int sd;
   struct ifconf ifc_conf;
-  char ifc_conf_buf[BUFSIZ];	/* 1024/32 == space for 32 interfaces */
+  char ifc_conf_buf[16384];	/* the addresses of many interfaces on macOS */
+  char *devpos, *devnext;
   struct ifreq *devptr;
   int ifc_conf_buf_size;
 
@@ -2691,11 +2718,16 @@ int get_device_info(void)
    * An array of devices were returned.  Which ones are up right now and
    * have broadcast capability?
    */
-  numdevs = ifc_conf.ifc_len / sizeof (struct ifreq);
-  for (i = 0; i < numdevs; i++)
+  for (devpos = ifc_conf.ifc_buf; devpos < ifc_conf.ifc_buf + ifc_conf.ifc_len; devpos = devnext)
     {
-      /* devptr points into an array of ifreq structs. */
-      devptr = &ifc_conf.ifc_req[i];
+      /* devptr points into a list of ifreq structs, of variable size on
+       * macOS: take the size now, the ioctl below overwrites the address */
+      devptr = (struct ifreq *) devpos;
+#ifdef _SIZEOF_ADDR_IFREQ
+      devnext = devpos + _SIZEOF_ADDR_IFREQ(*devptr);
+#else
+      devnext = devpos + sizeof (struct ifreq);
+#endif
 
       if (devptr->ifr_addr.sa_family != AF_INET)
 	continue;
@@ -3080,7 +3112,24 @@ int main(int argc, char **argv) {
 	pcap_if_t * d;
 
 	if (pcap_findalldevs(&alldevs, errbuf) == 0) {
-	  for (d = alldevs; d != NULL; d = d->next) {
+#ifdef __APPLE__
+	  /* macOS often lists tunnels first (utun0), without traffic: prefer
+	   * the first interface with an IPv4 address and no peer */
+	  for (d = alldevs; (d != NULL) && (dev == NULL); d = d->next) {
+	    pcap_addr_t * a;
+
+	    if (d->flags & PCAP_IF_LOOPBACK) {
+	      continue;
+	    }
+	    for (a = d->addresses; a != NULL; a = a->next) {
+	      if ((a->addr != NULL) && (a->addr->sa_family == AF_INET) && (a->dstaddr == NULL)) {
+		dev = strdup(d->name);
+		break;
+	      }
+	    }
+	  }
+#endif
+	  for (d = alldevs; (d != NULL) && (dev == NULL); d = d->next) {
 	    if (!(d->flags & PCAP_IF_LOOPBACK)) {
 	      dev = strdup(d->name);
 	      break;
@@ -3251,9 +3300,13 @@ int main(int argc, char **argv) {
         {
           fprintf(stderr,"Cannot capture on %s: %s\n",dev,errbuf);
           if (permission_denied && (getuid() != 0)) {
+#ifdef __linux__
             fprintf(stderr,"Live capture needs root privileges: run snif with sudo,\n"
                     "or give it the capture capabilities once after each build:\n"
                     "  sudo setcap cap_net_raw,cap_net_admin=eip ./snif\n");
+#else
+            fprintf(stderr,"Live capture needs access to /dev/bpf*: run snif with sudo.\n");
+#endif
           }
           CleanExit(1);
         }
