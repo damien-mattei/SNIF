@@ -53,6 +53,8 @@
 
 #include "icmp.h"
 
+extern int tcpdump_mode; /* one line in the format of tcpdump (--tcpdump) */
+
 
 extern int send_esc; /* send escape sequence to terminal
 		      * enable color and bold text
@@ -236,6 +238,27 @@ static void DecodeICMPOrigIP(u_int8_t * pkt, const u_int32_t len)
 }
 
 
+
+/*
+ * Function: PrintEchoTcpdump(const u_int8_t *, u_int32_t, int)
+ *
+ * Purpose: with --tcpdump, the identifier, sequence number and length
+ *          of an echo request or reply, on its line, as tcpdump
+ *
+ * Returns: void function
+ */
+static void PrintEchoTcpdump(const u_int8_t * pkt, u_int32_t len, int color)
+{
+  if (!tcpdump_mode || (len < 8)) {
+    return;
+  }
+  if (send_esc) {
+    NORMALMODE();
+    SETCOLORONLY(color);
+  }
+  printf(", id %u, seq %u, length %u", (pkt[4] << 8) | pkt[5], (pkt[6] << 8) | pkt[7], len);
+}
+
 /*
  * Function: DecodeICMP(u_int8_t *, const u_int32_t, IPHdr * )
  *
@@ -279,7 +302,9 @@ void DecodeICMP(u_int8_t * pkt, const u_int32_t len, IPHdr * iptr)
     switch (icmptr->type)
       {
       case ICMP_ECHOREPLY:
-	printf("Echo Reply\n");
+	printf("Echo Reply");
+	PrintEchoTcpdump(pkt, len, ICMP_COLOR);
+	printf("\n");
 	break;
       case ICMP_DEST_UNREACH:
 	printf("Destination Unreachable\n");
@@ -291,7 +316,9 @@ void DecodeICMP(u_int8_t * pkt, const u_int32_t len, IPHdr * iptr)
 	printf("Redirect (change route)\n");
 	break;
       case ICMP_ECHO:
-	printf("Echo Request\n");
+	printf("Echo Request");
+	PrintEchoTcpdump(pkt, len, ICMP_COLOR);
+	printf("\n");
 	break;
       case ICMP_ROUTER_ADVERTISE:
 	printf("Router Advertisement\n");
