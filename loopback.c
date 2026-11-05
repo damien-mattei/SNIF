@@ -33,6 +33,8 @@
 
 #include <netinet/in.h>
 
+#include <string.h>
+
 #include <search.h> /* added for hash tables */
 
 #include "ip.h"
@@ -70,6 +72,22 @@ void DecodeLoopBackPkt(struct pcap_pkthdr * pkthdr, u_int8_t * pkt)
 	     pkthdr->caplen, NULL_HDRLEN);
       return;
     }
+
+  /* the family in the header differs between systems: read the IP version */
+  if ((pkthdr->caplen > NULL_HDRLEN) && ((pkt[NULL_HDRLEN] >> 4) == 6)) {
+    static const u_int8_t ip6_loopback[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 };
+
+    /* IPv6 has no header checksum to show it, but the TCP and UDP checksums
+     * of macOS on lo0 are not computed either: recognize ::1 */
+    if ((pkthdr->caplen >= NULL_HDRLEN + 40)
+	&& ((memcmp(pkt + NULL_HDRLEN + 8, ip6_loopback, 16) == 0)
+	    || (memcmp(pkt + NULL_HDRLEN + 24, ip6_loopback, 16) == 0))) {
+      outgoing_pkt = 1;
+    }
+
+    DecodeIPV6(pkt + NULL_HDRLEN, pkthdr->caplen - NULL_HDRLEN, pkthdr);
+    return;
+  }
 
   /* macOS leaves the IPv4 checksum at 0 on lo0, and does not compute the
    * TCP and UDP checksums: they are never sent on a wire */
