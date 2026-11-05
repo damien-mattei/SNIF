@@ -439,6 +439,7 @@ void ShowProgramName(void) {
   }
   
   printf("Snif v1.0\n");
+  printf("Sniff Network Interface Frames\n");
   
   if (send_esc) {
     NORMALMODE();fflush(stdout);
