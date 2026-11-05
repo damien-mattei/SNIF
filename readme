@@ -44,6 +44,8 @@ partially supported on those systems:
 -Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
 -Linux Ubuntu 24.04
 
+Except for Ubuntu 24.04, those versions were tested with older releases of snif; the current code may not compile on them (it needs libpcap 1.0 or later). It was last tested on Ubuntu 24.04 (x86-64) and on macOS (Apple Silicon).
+
 
 REQUIREMENTS:
 -------------
