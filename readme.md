@@ -1,4 +1,8 @@
-S.N.I.F. Version 2.0 
+# S.N.I.F. Version 2.0
+
+![snif: detailed view, each layer in its color](img/snif1.png)
+
+![snif --tcpdump: one line per packet, in colors](img/snif2.png)
 
 by  Damien MATTEI (email: Damien.MATTEI@orange.fr)
 
@@ -17,32 +21,32 @@ COMPATIBILITY:
 
 partially tested on the following systems,this means that at some point of development it was working on the system but test has not always been performed on the final release:
 
--Linux RedHat 5.2 (Apollo)
--Linux Redhat 7.2 (Enigma)
--Linux Redhat 7.3 (Valhalla)
--Linux Redhat 9.0 (Shrike)
--Linux Fedora Core 2
--Linux Fedora Core 2 64bits
--Linux Fedora Core 3
--Linux Fedora Core 5
--Linux Fedora Core 10
--Linux YLD 6.0, Yellow Dog Linux, PowerPC
--Linux Ubuntu 18.10 (Cosmic Cuttlefish)
--Linux Ubuntu 24.04 (Noble Numbat), libpcap 1.10
+- Linux RedHat 5.2 (Apollo)
+- Linux Redhat 7.2 (Enigma)
+- Linux Redhat 7.3 (Valhalla)
+- Linux Redhat 9.0 (Shrike)
+- Linux Fedora Core 2
+- Linux Fedora Core 2 64bits
+- Linux Fedora Core 3
+- Linux Fedora Core 5
+- Linux Fedora Core 10
+- Linux YLD 6.0, Yellow Dog Linux, PowerPC
+- Linux Ubuntu 18.10 (Cosmic Cuttlefish)
+- Linux Ubuntu 24.04 (Noble Numbat), libpcap 1.10
 
--Mac OS X.3 server (Panther),requires Xcode
--Mac OS X.3 (Panther),requires Xcode
--Mac OS X.4 (Tiger) Intel and PowerPC,requires Xcode v2.5
--Mac OS X.5 (Leopard)
--Mac OS X.13.6 (High Sierra)
--macOS 26 (Tahoe), Apple Silicon
+- Mac OS X.3 server (Panther),requires Xcode
+- Mac OS X.3 (Panther),requires Xcode
+- Mac OS X.4 (Tiger) Intel and PowerPC,requires Xcode v2.5
+- Mac OS X.5 (Leopard)
+- Mac OS X.13.6 (High Sierra)
+- macOS 26 (Tahoe), Apple Silicon
 
--FreeBSD 5.3
+- FreeBSD 5.3
 
 partially supported on those systems:
 
--Mac OS X.2 (Jaguar) : works with -a option due to lack of hash table support in this version of Mac os X.
--Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
+- Mac OS X.2 (Jaguar) : works with -a option due to lack of hash table support in this version of Mac os X.
+- Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
 
 Except for Ubuntu 24.04 and macOS 26, those versions were tested with older releases of snif; the current code may not compile on them (it needs libpcap 1.0 or later). It was last tested on Ubuntu 24.04 (x86-64) and on macOS 26 (Apple Silicon).
 
@@ -57,7 +61,7 @@ Libpcap is available from http://www.tcpdump.org/.
 
 
 
-LINUX:
+### LINUX
 
 RPM versions of libpcap can be found at http://www.rpmfind.net and often are on contrib CDs of redhat or powertools sub-directories at ftp.redhat.com.
 
@@ -66,12 +70,12 @@ Libpcap if not installed on your Linux RedHat system is available as RPM from ft
 Earlier versions of Linux needs to install libpcap from source.
 
 
-MAC OS X (Darwin):
+### MAC OS X (Darwin)
 
 You need the developper tools in order to compile the program. The developper tools are available from Apple web site (http://www.apple.com) or from the CDs installation disks of Mac OS X.3,DVDs of Mac OS X.4 shipped with the iMac.
  
 
-FreeBSD:
+### FreeBSD
 
 The compilation and running of this program has been successfully tested on FreeBSD 5.3. 
 
@@ -81,13 +85,13 @@ NETWORK:
 --------
 
 This program deals with a lot of link layer protocols (network layer 2) but due to lack of hardware access,only those media have been tested:
--ethernet
--wifi card (Airport card and broadcomm wireless card)
--PPP used with RTC modem
--loopback
--Linux cooked sockets (3G ICON 225 device)
--3G card ICON 225
--Apple USB Adapter
+- ethernet
+- wifi card (Airport card and broadcomm wireless card)
+- PPP used with RTC modem
+- loopback
+- Linux cooked sockets (3G ICON 225 device)
+- 3G card ICON 225
+- Apple USB Adapter
 
 Some other link layer needs to be tested (ex: Token Ring), if you find any bug send me an email please.
 
