@@ -490,7 +490,7 @@ void ShowProgramName(void) {
     SETATTCOL(BRIGHT , CYAN );
   }
   
-  printf("Snif v1.0\n");
+  printf("Snif v%s\n", PACKAGE_VERSION);
   printf("Sniff Network Interface Frames\n");
   
   if (send_esc) {

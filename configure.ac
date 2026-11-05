@@ -4,7 +4,7 @@
 
 AC_PREREQ([2.69])
 
-AC_INIT([snif],[1.0],[Damien.MATTEI@free.fr])
+AC_INIT([snif],[2.0],[Damien.MATTEI@free.fr])
 
 AC_CONFIG_SRCDIR([snif.c])
 
