@@ -43,7 +43,6 @@ partially supported on those systems:
 
 -Mac OS X.2 (Jaguar) : works with -a option due to lack of hash table support in this version of Mac os X.
 -Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
--Linux Ubuntu 24.04
 
 Except for Ubuntu 24.04 and macOS 26, those versions were tested with older releases of snif; the current code may not compile on them (it needs libpcap 1.0 or later). It was last tested on Ubuntu 24.04 (x86-64) and on macOS 26 (Apple Silicon).
 
