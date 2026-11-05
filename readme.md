@@ -4,7 +4,7 @@
 
 ![snif --tcpdump: one line per packet, in colors](img/snif2.png)
 
-by  Damien MATTEI (email: Damien.MATTEI@orange.fr)
+by  Damien MATTEI (email: damien.mattei@gmail.com)
 
 S.N.I.F. is a packet sniffer,it is the acronym of "Sniff Network Information Frames"
 
