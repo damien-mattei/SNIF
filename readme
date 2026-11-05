@@ -35,7 +35,7 @@ partially tested on the following systems,this means that at some point of devel
 -Mac OS X.4 (Tiger) Intel and PowerPC,requires Xcode v2.5
 -Mac OS X.5 (Leopard)
 -Mac OS X.13.6 (High Sierra)
--macOS 14 (Sonoma), Apple Silicon
+-macOS 26 (Tahoe), Apple Silicon
 
 -FreeBSD 5.3
 
@@ -45,7 +45,7 @@ partially supported on those systems:
 -Linux Fedora Core 6 : you will have to install the libpcap from sources before compiling
 -Linux Ubuntu 24.04
 
-Except for Ubuntu 24.04 and macOS 14, those versions were tested with older releases of snif; the current code may not compile on them (it needs libpcap 1.0 or later). It was last tested on Ubuntu 24.04 (x86-64) and on macOS 14 (Apple Silicon).
+Except for Ubuntu 24.04 and macOS 26, those versions were tested with older releases of snif; the current code may not compile on them (it needs libpcap 1.0 or later). It was last tested on Ubuntu 24.04 (x86-64) and on macOS 26 (Apple Silicon).
 
 
 REQUIREMENTS:
