@@ -20,3 +20,6 @@
 fuzz/build/
 fuzz/out*/
 fuzz/corpus/
+
+# personal notes, not published
+/todo
