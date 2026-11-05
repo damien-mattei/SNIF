@@ -386,11 +386,11 @@ void DecodeIP(u_int8_t * pkt, const u_int32_t len) {
 
     
     if(csum) {
-      if (!outgoing_pkt) {
-	printf("Bad IP checksum\n");
-	return;
+      if (!outgoing_pkt) { /* shown, and the decoding goes on, as tcpdump */
+	printf("Bad IP checksum 0x%04x (should be 0x%04x)\n", ntohs(iptr->ip_csum),
+	       expected_cksum(ntohs(csum), ntohs(iptr->ip_csum)));
       }
-      if (verb > 0) { /* not computed yet when we captured it */
+      else if (verb > 0) { /* not computed yet when we captured it */
 	printf("IP Checksum: not verified (sent by us, computed by the network card)\n");
       }
     }
