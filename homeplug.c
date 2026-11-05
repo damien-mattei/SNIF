@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * S.N.I.F : Sniff Network Interface's Frames
+ * S.N.I.F : Sniff Network Interface Frames
  *
  * Copyright (C) 2007  Damien MATTEI <Damien.MATTEI@gmail.com>
 
