@@ -72,7 +72,8 @@ void GetDeviceMAC(char * device); /* hardware address of the capture interface *
 void DumpHex(u_char *, u_int32_t); /* dump a packet in hexadecimal and ASCII */
 void PrintPorts(u_int16_t,u_int16_t,int);
 void PrintTcpdumpEndpoints(int, const u_int8_t *, const u_int8_t *, u_int8_t,
-			   const u_int8_t *, u_int32_t); /* IP src.port > dst.port: (--tcpdump) */ /* print source and destination ports */
+			   const u_int8_t *, u_int32_t);
+void PrintTcpdumpFragment(u_int32_t, u_int32_t, u_int8_t, const u_int8_t *, u_int32_t); /* IP src.port > dst.port: (--tcpdump) */ /* print source and destination ports */
 void printResolvedIP(char *); /* resolve IP in hostname and print it */
 void printResolvedIP6(struct in6_addr *); /* resolve IPv6 address in hostname and print it */
 void PrintIP6Addr(u_int8_t *, int); /* print an IPv6 address (and its name) */

@@ -238,6 +238,41 @@ static void PrintPort(u_int16_t port,int color) {
 }
 
 
+/*
+ * Function: PrintTcpdumpPort(const char *, u_int16_t, int)
+ *
+ * Purpose: a port as tcpdump shows it, by its service name when known,
+ *          in the color of TCP or UDP, then back to the color of IP
+ *
+ * Arguments: prefix => written before ("." after an address)
+ *            port => the port
+ *            pcolor => the color of TCP or UDP
+ *
+ * Returns: void function
+ */
+static void PrintTcpdumpPort(const char * prefix, u_int16_t port, int pcolor)
+{
+  const char * service = NULL, * desc;
+  int namelen = 0;
+
+  if (send_esc) {
+    SETCOLORONLY(pcolor);
+  }
+  if (((port < 1024) || not_wkp) && text_port) {
+    service = PortService(port, &namelen, &desc);
+  }
+  if (service != NULL) {
+    printf("%s%.*s", prefix, namelen, service);
+  }
+  else {
+    printf("%s%u", prefix, port);
+  }
+  if (send_esc) {
+    SETCOLORONLY(IP_COLOR);
+  }
+}
+
+
 /* print one end of a packet in the format of tcpdump: the name of the
  * address (learned without traffic) or the address, then the port
  * (name of its service) in the color of the transport layer */
@@ -245,8 +280,6 @@ static void PrintTcpdumpEnd(int family, const u_int8_t * addr, int has_port, u_i
 {
   char text[INET6_ADDRSTRLEN];
   const char * name = NameCacheLookup(family, addr);
-  const char * service = NULL, * desc;
-  int namelen = 0;
 
   if (send_esc) {
     SETATTRIB( BRIGHT );
@@ -263,21 +296,9 @@ static void PrintTcpdumpEnd(int family, const u_int8_t * addr, int has_port, u_i
   }
 
   if (has_port) {
-    if (send_esc) {
-      SETCOLORONLY(pcolor);
-    }
-    if (((port < 1024) || not_wkp) && text_port) {
-      service = PortService(port, &namelen, &desc);
-    }
-    if (service != NULL) {
-      printf(".%.*s", namelen, service);
-    }
-    else {
-      printf(".%u", port);
-    }
+    PrintTcpdumpPort(".", port, pcolor);
   }
-
-  if (send_esc) {
+  else if (send_esc) {
     SETCOLORONLY(IP_COLOR);
   }
 }
@@ -308,6 +329,37 @@ void PrintTcpdumpEndpoints(int family, const u_int8_t * src, const u_int8_t * ds
   printf(" > ");
   PrintTcpdumpEnd(family, dst, has_port, has_port ? ((l4[2] << 8) | l4[3]) : 0, pcolor);
   printf(":\n");
+}
+
+
+/*
+ * Function: PrintTcpdumpFragment(u_int32_t, u_int32_t, u_int8_t,
+ *                                const u_int8_t *, u_int32_t)
+ *
+ * Purpose: an IPv6 fragment with --tcpdump, after the addresses:
+ *          "frag (offset|length)", then the ports of the first one
+ *          ("frag (0|1448) 5353 > 53:")
+ *
+ * Arguments: offset, length => of the fragment data, in bytes
+ *            proto => the upper layer protocol
+ *            l4, l4len => its header, NULL in the fragments after the first
+ *
+ * Returns: void function
+ */
+void PrintTcpdumpFragment(u_int32_t offset, u_int32_t length, u_int8_t proto,
+			  const u_int8_t * l4, u_int32_t l4len)
+{
+  int pcolor = (proto == IPPROTO_TCP) ? TCP_COLOR : UDP_COLOR;
+
+  LayerMain(); /* on the line of the addresses */
+  printf("frag (%u|%u)", offset, length);
+  if ((l4 != NULL) && (l4len >= 4) && ((proto == IPPROTO_TCP) || (proto == IPPROTO_UDP))) {
+    PrintTcpdumpPort(" ", (l4[0] << 8) | l4[1], pcolor);
+    printf(" >");
+    PrintTcpdumpPort(" ", (l4[2] << 8) | l4[3], pcolor);
+    printf(":");
+  }
+  printf("\n");
 }
 
 

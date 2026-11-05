@@ -297,11 +297,11 @@ static u_int32_t DecodeIP6Ext(u_int8_t type, u_int8_t * ptr, u_int32_t len, u_in
     }
 
     if (offset) {
-      LayerMain(); /* kept by -1 and --tcpdump */
       if (tcpdump_mode) {
-	printf("frag (%u|%u)\n", offset, len - (u_int32_t) sizeof(IP6Frag));
+	PrintTcpdumpFragment(offset, len - (u_int32_t) sizeof(IP6Frag), 0, NULL, 0);
       }
       else {
+	LayerMain(); /* kept by -1 */
 	printf("Upper layer header not in this fragment\n");
       }
       return 0;
@@ -352,12 +352,13 @@ static u_int32_t DecodeIP6Ext(u_int8_t type, u_int8_t * ptr, u_int32_t len, u_in
 /* walk the extension headers without printing them, to find the upper
  * layer of a packet (its ports for --tcpdump): its offset, 0 if it cannot
  * be read (a fragment after the first, ESP, truncated) */
-static u_int32_t FindUpperLayer(const u_int8_t * pkt, u_int32_t end, u_int8_t * nxt)
+static u_int32_t FindUpperLayer(const u_int8_t * pkt, u_int32_t end, u_int8_t * nxt, int32_t * fraglen)
 {
   u_int32_t off = IP6_HDR_LEN, hlen;
   int n;
 
   *nxt = ((const IP6RawHdr *) pkt)->ip6nxt;
+  *fraglen = -1; /* not a fragment */
 
   for (n = 0; n < IP6_MAX_EXT_HDRS; n++) {
     switch (*nxt) {
@@ -374,6 +375,7 @@ static u_int32_t FindUpperLayer(const u_int8_t * pkt, u_int32_t end, u_int8_t * 
 	return 0; /* not the first fragment */
       }
       hlen = 8;
+      *fraglen = end - off - hlen; /* the first fragment: the length of its data */
       break;
     case IP_PROTO_AH:
       if (off + 2 > end) {
@@ -459,10 +461,17 @@ void DecodeIPV6(u_int8_t *pkt, u_int32_t len,struct pcap_pkthdr * pkthdr)
   if (tcpdump_mode) {
     u_int32_t up;
     u_int8_t upnxt;
+    int32_t fraglen;
 
-    up = FindUpperLayer(pkt, IP6_HDR_LEN + plen, &upnxt);
-    PrintTcpdumpEndpoints(AF_INET6, (u_int8_t *) &(hdr->ip6_src), (u_int8_t *) &(hdr->ip6_dst), upnxt,
-			  up ? pkt + up : NULL, up ? IP6_HDR_LEN + plen - up : 0);
+    up = FindUpperLayer(pkt, IP6_HDR_LEN + plen, &upnxt, &fraglen);
+    if (fraglen >= 0) { /* the first fragment: its ports after "frag", as tcpdump */
+      PrintTcpdumpEndpoints(AF_INET6, (u_int8_t *) &(hdr->ip6_src), (u_int8_t *) &(hdr->ip6_dst), upnxt, NULL, 0);
+      PrintTcpdumpFragment(0, fraglen, upnxt, up ? pkt + up : NULL, up ? IP6_HDR_LEN + plen - up : 0);
+    }
+    else {
+      PrintTcpdumpEndpoints(AF_INET6, (u_int8_t *) &(hdr->ip6_src), (u_int8_t *) &(hdr->ip6_dst), upnxt,
+			    up ? pkt + up : NULL, up ? IP6_HDR_LEN + plen - up : 0);
+    }
   }
   else {
     printf("IPv6 ");
