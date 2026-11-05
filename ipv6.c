@@ -297,7 +297,13 @@ static u_int32_t DecodeIP6Ext(u_int8_t type, u_int8_t * ptr, u_int32_t len, u_in
     }
 
     if (offset) {
-      printf("Upper layer header not in this fragment\n");
+      LayerMain(); /* kept by -1 and --tcpdump */
+      if (tcpdump_mode) {
+	printf("frag (%u|%u)\n", offset, len - (u_int32_t) sizeof(IP6Frag));
+      }
+      else {
+	printf("Upper layer header not in this fragment\n");
+      }
       return 0;
     }
 

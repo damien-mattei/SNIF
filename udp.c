@@ -382,6 +382,7 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
     u_int16_t sp;       /* source port UDP */
     u_int16_t dp;       /* dest port UDP */
     u_int16_t dsize;        /* packet payload size */
+    u_int16_t here;         /* the part of it in this packet */
 
     if (send_esc && !tcpdump_mode) {
       SETCOLOR(UDP_COLOR);
@@ -420,19 +421,14 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
       return;
     }
 
-    /* make sure there are enough bytes as designated by length field */
-    if(len < uhlen)
-    {
-      printf("Short UDP packet, length field > payload length\n");
-      return;
-    }
-
-
-    /* length was validated up above */
-    dsize = uhlen - UDP_HEADER_LEN; 
+    /* the length field counts the whole datagram: the first fragment of a
+     * fragmented datagram (or a truncated capture) holds only its start,
+     * decoded as far as it goes, without checksum to verify */
+    dsize = uhlen - UDP_HEADER_LEN;
+    here = (len < uhlen) ? len - UDP_HEADER_LEN : dsize;
 
     if (tcpdump_mode) { /* the application, or UDP and its length as tcpdump */
-      if ((dsize == 0) || !DecodeUDPPayload(sp, dp, pkt + UDP_HEADER_LEN, dsize)) {
+      if ((here == 0) || !DecodeUDPPayload(sp, dp, pkt + UDP_HEADER_LEN, here)) {
 	if (send_esc) {
 	  SETCOLOR(UDP_COLOR);
 	}
@@ -441,15 +437,19 @@ void DecodeUDP(u_int8_t * pkt, const u_int32_t len,IPHdr * iptr,IP6RawHdr * ip6p
       return;
     }
 
-    if ((dsize > 0) || (verb > 0)) {
-      printf("Payload: %d bytes\n", dsize);
+    if (here < dsize) {
+      printf("Payload: %d bytes, %d here (fragmented or truncated, checksum not verified)\n", dsize, here);
+    }
+    else {
+      if ((dsize > 0) || (verb > 0)) {
+	printf("Payload: %d bytes\n", dsize);
+      }
+      CheckUDPChecksum(pkt, uhlen, iptr, ip6ptr);
     }
 
-    CheckUDPChecksum(pkt, uhlen, iptr, ip6ptr);
-
     /* application layer */
-    if (dsize > 0) {
-      DecodeUDPPayload(sp, dp, pkt + UDP_HEADER_LEN, dsize);
+    if (here > 0) {
+      DecodeUDPPayload(sp, dp, pkt + UDP_HEADER_LEN, here);
     }
 
     return;

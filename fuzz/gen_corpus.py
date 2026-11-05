@@ -154,3 +154,12 @@ pcap('tokenring', [b'\x10\x40' + M1 + M2 + b'\xaa\xaa\3\0\0\0\x08\0' + ip4(1, b'
 pcap('slip', [b'\0'*16 + ip4(1, b'\x08\0\0\0\0\1\0\1')], dlt=8)
 pcap('pflog', [struct.pack('>IB', 61, 2) + b'\0'*56 + ip4(1, b'\x08\0\0\0\0\1\0\1')], dlt=117)
 pcap('sll2', [b'\x08\0\0\0\0\0\0\2\0\1\4\6' + M1 + b'\0\0' + ip4(1, b'\x08\0\0\0\0\1\0\1')], dlt=276)
+
+# ---- fragmented UDP datagrams: the first fragment holds the start only ----
+_u = udp(5353, 53, dns() + b'x' * 2000)
+def ip4f(data, frag):
+    h = struct.pack('>BBHHHBBH4s4s', 0x45, 0, 20 + len(data), 7, frag, 64, 17, 0, IP1, IP2)
+    return h[:10] + struct.pack('>H', cks(h)) + h[12:] + data
+pcap('frag', [eth(ip4f(_u[:1480], 0x2000)), eth(ip4f(_u[1480:], 185))])
+pcap('frag6', [eth(ip6(44, struct.pack('>BBHI', 17, 0, 1, 7) + _u[:1448]), 0x86dd),
+               eth(ip6(44, struct.pack('>BBHI', 17, 0, 1448, 7) + _u[1448:]), 0x86dd)])

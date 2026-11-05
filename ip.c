@@ -982,6 +982,17 @@ Specification
 
     proto = iptr->ip_proto;
 
+    if (frag_offset) { /* a fragment after the first: no header of the upper layer in it */
+      LayerMain(); /* kept by -1 and --tcpdump */
+      if (tcpdump_mode) {
+	printf("ip-proto-%u\n", proto);
+      }
+      else {
+	printf("Fragment of protocol %u: %u bytes of data\n", proto, ip_len);
+      }
+      return;
+    }
+
     /* an authentication header may come before the upper layer */
     while (proto == IP_PROTO_AH) {
 
